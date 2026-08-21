@@ -6,30 +6,6 @@
 - Local:         http://localhost:3000
 - Network:       http://10.91.51.136:3000
 - Environments: .env.local
-✓ Ready in 310ms
-✓ Running next.config.ts took 34ms
+✓ Ready in 368ms
+✓ Running next.config.ts took 23ms
 
- GET / 200 in 247ms (next.js: 145ms, application-code: 102ms)
- GET /dashboard 200 in 143ms (next.js: 22ms, application-code: 121ms)
- GET / 200 in 35ms (next.js: 11ms, application-code: 24ms)
- GET / 200 in 20ms (next.js: 4ms, application-code: 15ms)
- GET /setup 200 in 79ms (next.js: 40ms, application-code: 40ms)
- POST /api/lookup-ecp 200 in 753ms (next.js: 160ms, application-code: 593ms)
- GET /setup 200 in 39ms (next.js: 7ms, application-code: 32ms)
- POST /api/lookup-ecp 200 in 1127ms (next.js: 11ms, application-code: 1115ms)
- GET / 200 in 60ms (next.js: 9ms, application-code: 51ms)
- GET /setup 200 in 30ms (next.js: 8ms, application-code: 22ms)
- POST /api/lookup-ecp 200 in 268ms (next.js: 4ms, application-code: 265ms)
- POST /api/extract-pdf 200 in 1402ms (next.js: 33ms, application-code: 1369ms)
-Analysis failed Error: Custom AI provider request failed (401): {"error":{"message":"No valid OAuth token","type":"api_error"}}
-    at callCustomProvider (lib\ai-client.ts:35:11)
-    at async getCompletionText (lib\ai-client.ts:66:30)
-    at async POST (app\api\analyse\route.ts:46:18)
-  33 |
-  34 |   if (!res.ok) {
-> 35 |     throw new Error(`Custom AI provider request failed (${res.status}): ${await res.text()}`);
-     |           ^
-  36 |   }
-  37 |
-  38 |   const data = await res.json();
- POST /api/analyse 502 in 633ms (next.js: 53ms, application-code: 580ms)

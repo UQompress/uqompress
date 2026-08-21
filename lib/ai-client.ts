@@ -1,8 +1,9 @@
+import OpenAI from "openai";
 import { CLAUDE_MODEL, getAnthropicClient } from "./anthropic";
 
-// Claude (or the custom endpoint below) is instructed to return JSON only,
-// but this strips fenced code blocks defensively in case it wraps the
-// object in ```json anyway.
+// Claude (or Ungate below) is instructed to return JSON only, but this
+// strips fenced code blocks defensively in case it wraps the object in
+// ```json anyway.
 export function extractJson<T>(rawText: string): T {
   const trimmed = rawText.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -10,35 +11,40 @@ export function extractJson<T>(rawText: string): T {
   return JSON.parse(jsonText) as T;
 }
 
-// OpenAI-chat-completions-compatible endpoint, configured via env vars so it
-// can point at any provider using that wire format (not just OpenAI itself).
-async function callCustomProvider(prompt: string, maxTokens: number): Promise<string | null> {
-  const baseUrl = process.env.AI_API_BASE_URL;
-  const apiKey = process.env.AI_API_KEY;
-  const model = process.env.AI_MODEL;
-  if (!baseUrl || !apiKey || !model) return null;
+let ungateClient: OpenAI | null = null;
 
-  const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: maxTokens,
-    }),
-  });
+function getUngateClient(): OpenAI | null {
+  const baseURL = process.env.UNGATE_BASE_URL;
+  const apiKey = process.env.UNGATE_API_KEY;
+  if (!baseURL || !apiKey) return null;
+  if (!ungateClient) ungateClient = new OpenAI({ apiKey, baseURL });
+  return ungateClient;
+}
 
-  if (!res.ok) {
-    throw new Error(`Custom AI provider request failed (${res.status}): ${await res.text()}`);
+// Ungate (a local gateway proxying your own ChatGPT/Claude/MiniMax provider
+// accounts) only registers /v1/chat/completions externally, not /v1/responses
+// — use client.chat.completions.create(), not client.responses.create().
+async function callUngate(prompt: string, maxTokens: number): Promise<string | null> {
+  const client = getUngateClient();
+  if (!client) return null;
+
+  const model = process.env.UNGATE_MODEL;
+  if (!model) {
+    throw new Error(
+      "UNGATE_BASE_URL/UNGATE_API_KEY are set but UNGATE_MODEL is missing — " +
+        "call GET /v1/models against your Ungate instance and set UNGATE_MODEL to one of the returned IDs.",
+    );
   }
 
-  const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const response = await client.chat.completions.create({
+    model,
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: maxTokens,
+  });
+
+  const text = response.choices[0]?.message?.content;
   if (typeof text !== "string") {
-    throw new Error("Unexpected response shape from custom AI provider.");
+    throw new Error("Unexpected response shape from Ungate.");
   }
   return text;
 }
@@ -60,11 +66,11 @@ async function callAnthropic(prompt: string, maxTokens: number): Promise<string 
   return textBlock.text;
 }
 
-// Tries the custom provider first (if configured), then Anthropic, then
-// signals the caller to fall back to mock data.
+// Tries Ungate first (if configured), then Anthropic, then signals the
+// caller to fall back to mock data.
 export async function getCompletionText(prompt: string, maxTokens: number): Promise<string | null> {
-  const fromCustomProvider = await callCustomProvider(prompt, maxTokens);
-  if (fromCustomProvider !== null) return fromCustomProvider;
+  const fromUngate = await callUngate(prompt, maxTokens);
+  if (fromUngate !== null) return fromUngate;
 
   return callAnthropic(prompt, maxTokens);
 }
