@@ -1,4 +1,4 @@
-import { CLAUDE_MODEL, extractJson, getAnthropicClient } from "@/lib/anthropic";
+import { extractJson, getCompletionText } from "@/lib/ai-client";
 import type { Topic } from "@/lib/types";
 
 type InsertContentBody = {
@@ -16,11 +16,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing topic." }, { status: 400 });
   }
 
-  const client = getAnthropicClient();
-  if (!client) {
-    return Response.json({ content: mockContent(topic) });
-  }
-
   const prompt = `Draft a condensed cheat sheet entry for this exam topic.
 
 Topic: ${topic.name}
@@ -34,18 +29,12 @@ Return ONLY a JSON object, no prose before or after it, no markdown code fences,
 exactly like this: {"content": string}`;
 
   try {
-    const message = await client.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 512,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const textBlock = message.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text response from model.");
+    const text = await getCompletionText(prompt, 512);
+    if (text === null) {
+      return Response.json({ content: mockContent(topic) });
     }
 
-    const parsed = extractJson<{ content: string }>(textBlock.text);
+    const parsed = extractJson<{ content: string }>(text);
     return Response.json(parsed);
   } catch (err) {
     console.error("Content drafting failed", err);

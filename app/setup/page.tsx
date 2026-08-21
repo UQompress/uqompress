@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FileText, Upload, X } from "lucide-react";
+import { FileText, Loader2, Upload, X } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { useStudioStore } from "@/lib/store";
 import { MOCK_TOPICS } from "@/lib/mock-data";
@@ -24,9 +24,51 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [ecpLookupStatus, setEcpLookupStatus] = useState<
+    "idle" | "loading" | "done" | "error"
+  >("idle");
+  const [ecpSource, setEcpSource] = useState<{ semesterLabel: string; profileUrl: string } | null>(
+    null,
+  );
+  const [ecpLookupError, setEcpLookupError] = useState<string | null>(null);
+  const hasLookedUp = useRef(false);
+
   useEffect(() => {
     if (!courseCode) router.replace("/");
   }, [courseCode, router]);
+
+  useEffect(() => {
+    if (!courseCode || hasLookedUp.current) return;
+    hasLookedUp.current = true;
+
+    setEcpLookupStatus("loading");
+    fetch("/api/lookup-ecp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseCode }),
+    })
+      .then((res) => res.json())
+      .then((data: { outcomes?: string; semesterLabel?: string; profileUrl?: string; error?: string }) => {
+        if (data.error || !data.outcomes) {
+          setEcpLookupStatus("error");
+          setEcpLookupError(data.error ?? "Could not find learning outcomes online.");
+          return;
+        }
+        // Only auto-fill if the student hasn't already pasted something in.
+        if (!ecpText.trim()) setEcpText(data.outcomes);
+        setEcpSource({
+          semesterLabel: data.semesterLabel ?? "",
+          profileUrl: data.profileUrl ?? "",
+        });
+        setEcpLookupStatus("done");
+      })
+      .catch(() => {
+        setEcpLookupStatus("error");
+        setEcpLookupError("Could not find learning outcomes online.");
+      });
+    // Only run once per course code on mount — ecpText/setEcpText intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseCode]);
 
   function handleFilesSelected(list: FileList | null) {
     if (!list) return;
@@ -112,16 +154,42 @@ export default function SetupPage() {
           <label className="text-sm font-medium">
             Learning outcomes{" "}
             <span className="font-normal text-grey">
-              (optional — paste from the ECP manually)
+              (looked up automatically from the course profile — edit or paste over it if needed)
             </span>
           </label>
           <textarea
             value={ecpText}
             onChange={(e) => setEcpText(e.target.value)}
-            rows={4}
-            placeholder="Paste course learning outcomes here..."
+            rows={6}
+            placeholder={
+              ecpLookupStatus === "loading"
+                ? "Looking up learning outcomes..."
+                : "Paste course learning outcomes here..."
+            }
             className="w-full resize-none border border-grey-light px-3 py-2 text-sm outline-none focus:border-uq-purple"
           />
+          {ecpLookupStatus === "loading" && (
+            <p className="flex items-center gap-1.5 text-xs text-grey">
+              <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />
+              Looking up {courseCode} on the UQ course profile site...
+            </p>
+          )}
+          {ecpLookupStatus === "done" && ecpSource && (
+            <p className="text-xs text-grey">
+              Auto-filled from{" "}
+              <a
+                href={ecpSource.profileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-uq-purple underline"
+              >
+                {ecpSource.semesterLabel}
+              </a>
+            </p>
+          )}
+          {ecpLookupStatus === "error" && (
+            <p className="text-xs text-grey">{ecpLookupError} — paste manually instead.</p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">

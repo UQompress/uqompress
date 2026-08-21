@@ -1,4 +1,4 @@
-import { CLAUDE_MODEL, extractJson, getAnthropicClient } from "@/lib/anthropic";
+import { extractJson, getCompletionText } from "@/lib/ai-client";
 import { MOCK_TOPICS } from "@/lib/mock-data";
 import type { ExtractedFile, Topic } from "@/lib/types";
 
@@ -18,11 +18,6 @@ export async function POST(request: Request) {
 
   if (!files || files.length === 0) {
     return Response.json({ error: "No extracted text provided." }, { status: 400 });
-  }
-
-  const client = getAnthropicClient();
-  if (!client) {
-    return Response.json({ topics: MOCK_TOPICS });
   }
 
   const materialsBlock = files
@@ -48,18 +43,12 @@ exactly like this:
 {"topics": [{"id": string, "name": string, "frequencyScore": number, "rationale": string, "sourceExcerpt": string}]}`;
 
   try {
-    const message = await client.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const textBlock = message.content.find((block) => block.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      throw new Error("No text response from model.");
+    const text = await getCompletionText(prompt, 4096);
+    if (text === null) {
+      return Response.json({ topics: MOCK_TOPICS });
     }
 
-    const parsed = extractJson<{ topics: Topic[] }>(textBlock.text);
+    const parsed = extractJson<{ topics: Topic[] }>(text);
     return Response.json(parsed);
   } catch (err) {
     console.error("Analysis failed", err);

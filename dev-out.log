@@ -1,0 +1,12 @@
+
+> uqompress@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.91.51.136:3000
+- Environments: .env.local
+✓ Ready in 310ms
+✓ Running next.config.ts took 34ms
+
+ GET / 200 in 247ms (next.js: 145ms, application-code: 102ms)
