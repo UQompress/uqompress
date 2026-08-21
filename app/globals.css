@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --grey: #6b6b6b;
+  --grey-light: #e5e5e5;
+  --uq-purple: #51247a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-grey: var(--grey);
+  --color-grey-light: var(--grey-light);
+  --color-uq-purple: var(--uq-purple);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
