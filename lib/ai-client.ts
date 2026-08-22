@@ -42,6 +42,7 @@ async function callUngate(prompt: string, maxTokens: number): Promise<string | n
     model,
     messages: [{ role: "user", content: prompt }],
     max_tokens: maxTokens,
+    reasoning_effort: "low",
     // `priority` is the backward-compatible request value for Fast mode.
     service_tier: UNGATE_SERVICE_TIER,
   });
