@@ -5,6 +5,8 @@ export const GRID = 8;
 // Alignment snap threshold (px) against other blocks' edges/centers.
 export const ALIGN_SNAP_THRESHOLD = 6;
 
+const GRID_WIDTH_TYPES: BlockType[] = ["text", "table", "image", "divider"];
+
 export const DEFAULT_CONTENT: Record<BlockType, string> = {
   text: "",
   table: "Header 1 | Header 2\nRow 1 | Row 2",
@@ -36,6 +38,81 @@ export function snap(value: number): number {
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+export function fitsGridCellWidth(type: BlockType): boolean {
+  return GRID_WIDTH_TYPES.includes(type);
+}
+
+export function getGridCellIndexes(
+  x: number,
+  y: number,
+  pageWidth: number,
+  pageHeight: number,
+  rows: number,
+  cols: number,
+): { row: number; col: number } {
+  const safeRows = Math.max(1, rows);
+  const safeCols = Math.max(1, cols);
+  const cellWidth = pageWidth / safeCols;
+  const cellHeight = pageHeight / safeRows;
+  return {
+    col: Math.min(safeCols - 1, Math.floor(clamp(x, 0, pageWidth - 1) / cellWidth)),
+    row: Math.min(safeRows - 1, Math.floor(clamp(y, 0, pageHeight - 1) / cellHeight)),
+  };
+}
+
+// Treats the visible row/column lines as real cell boundaries. Content blocks
+// fill the column they occupy, while free-form design elements keep their
+// width. Every block keeps its height and is contained by its current row
+// whenever that height fits inside the row.
+export function fitBlockToGridCell({
+  type,
+  x,
+  y,
+  width,
+  height,
+  pageWidth,
+  pageHeight,
+  rows,
+  cols,
+}: {
+  type: BlockType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageWidth: number;
+  pageHeight: number;
+  rows: number;
+  cols: number;
+}): { x: number; y: number; width: number } {
+  const safeRows = Math.max(1, rows);
+  const safeCols = Math.max(1, cols);
+  const cellWidth = pageWidth / safeCols;
+  const cellHeight = pageHeight / safeRows;
+  const { row, col } = getGridCellIndexes(
+    x,
+    y,
+    pageWidth,
+    pageHeight,
+    safeRows,
+    safeCols,
+  );
+  const cellLeft = col * cellWidth;
+  const cellRight = (col + 1) * cellWidth;
+  const cellTop = row * cellHeight;
+  const cellBottom = (row + 1) * cellHeight;
+  const nextWidth = fitsGridCellWidth(type) ? cellWidth : Math.min(width, cellWidth);
+  const nextX = fitsGridCellWidth(type)
+    ? cellLeft
+    : clamp(x, cellLeft, Math.max(cellLeft, cellRight - nextWidth));
+  const nextY =
+    height <= cellHeight
+      ? clamp(y, cellTop, cellBottom - height)
+      : cellTop;
+
+  return { x: nextX, y: nextY, width: nextWidth };
 }
 
 // Content dragged in from the AI Suggestion Bar is often much longer than a

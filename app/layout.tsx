@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CheatSheet Studio",
+  title: "UQompress",
   description: "AI-assisted cheat sheet builder for UQ students.",
 };
 

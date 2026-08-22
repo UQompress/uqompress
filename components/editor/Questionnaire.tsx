@@ -8,10 +8,12 @@ export function Questionnaire({
   questions,
   onSubmit,
   onCancel,
+  onSkip,
 }: {
   questions: QuestionnaireQuestion[];
   onSubmit: (answers: QuestionnaireAnswer[]) => void;
   onCancel: () => void;
+  onSkip: () => void;
 }) {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -110,14 +112,23 @@ export function Questionnaire({
         >
           Cancel
         </button>
-        <button
-          type="button"
-          disabled={!isAnswered}
-          onClick={handleNext}
-          className="bg-uq-purple px-5 py-2 text-sm font-medium text-white disabled:opacity-40"
-        >
-          {isLast ? "Finish" : "Next question"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="border border-grey-light px-4 py-2 text-sm hover:border-uq-purple"
+          >
+            Skip questionnaire
+          </button>
+          <button
+            type="button"
+            disabled={!isAnswered}
+            onClick={handleNext}
+            className="bg-uq-purple px-5 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            {isLast ? "Finish" : "Next question"}
+          </button>
+        </div>
       </div>
     </div>
   );

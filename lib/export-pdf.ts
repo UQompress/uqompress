@@ -16,19 +16,8 @@ export async function exportPagesToPdf(
     const element = document.getElementById(`cheat-sheet-page-${i}`);
     if (!element) throw new Error(`Cheat sheet page ${i} not found.`);
 
-    // Hide the fine snap-to-grid dot guide (a pure editing aid) for the
-    // duration of the capture, but keep the rows/columns layout divider
-    // lines — those are meant to print as real section dividers.
-    const previousBackgroundImage = element.style.backgroundImage;
-    element.style.backgroundImage = "none";
-
-    let imgData: string;
-    try {
-      const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff" });
-      imgData = canvas.toDataURL("image/png");
-    } finally {
-      element.style.backgroundImage = previousBackgroundImage;
-    }
+    const canvas = await html2canvas(element, { scale: 2, backgroundColor: "#ffffff" });
+    const imgData = canvas.toDataURL("image/png");
 
     if (i > 0) pdf.addPage();
     pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);

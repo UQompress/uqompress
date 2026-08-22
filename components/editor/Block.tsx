@@ -129,7 +129,7 @@ function TextContent({
     return (
       <div
         ref={contentRef}
-        className={`h-full w-full overflow-hidden whitespace-pre-wrap p-2 ${isHighlighting ? "cursor-text select-text" : ""}`}
+        className={`h-full w-full overflow-hidden whitespace-pre-wrap px-[6px] py-2 ${isHighlighting ? "cursor-text select-text" : ""}`}
         style={textStyle}
         dangerouslySetInnerHTML={{ __html: content || "Double-click to edit" }}
       />
@@ -141,7 +141,7 @@ function TextContent({
       defaultValue={content}
       onBlur={(e) => onCommit(e.target.value)}
       style={textStyle}
-      className="h-full w-full resize-none p-2 outline-none"
+      className="h-full w-full resize-none px-[6px] py-2 outline-none"
     />
   );
 }

@@ -27,8 +27,6 @@ export function PageFrame({
       style={{
         width,
         height,
-        backgroundImage: "radial-gradient(circle, #e5e5e5 1px, transparent 1px)",
-        backgroundSize: "16px 16px",
       }}
       className="relative shrink-0 border border-grey-light bg-white"
     >

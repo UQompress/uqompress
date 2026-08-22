@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 
 const USER_AGENT =
-  "Mozilla/5.0 (compatible; CheatSheetStudio/1.0; UQCS hackathon project)";
+  "Mozilla/5.0 (compatible; UQompress/1.0; UQCS hackathon project)";
 
 type Offering = {
   label: string;

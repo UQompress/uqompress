@@ -22,6 +22,8 @@ import {
   alignToOtherBlocks,
   clamp,
   estimateTextBlockSize,
+  fitBlockToGridCell,
+  getGridCellIndexes,
   getPageDimensions,
   snap,
 } from "@/lib/editor-constants";
@@ -32,6 +34,7 @@ import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 1.5;
 const ZOOM_STEP = 0.1;
+const ZOOM_WHEEL_STEP = 0.2;
 
 export default function EditorPage() {
   const router = useRouter();
@@ -42,6 +45,8 @@ export default function EditorPage() {
   const ecpText = useStudioStore((s) => s.ecpText);
   const blocks = useStudioStore((s) => s.blocks);
   const pageCount = useStudioStore((s) => s.pageCount);
+  const gridRows = useStudioStore((s) => s.gridRows);
+  const gridCols = useStudioStore((s) => s.gridCols);
   const addBlockAt = useStudioStore((s) => s.addBlockAt);
   const updateBlock = useStudioStore((s) => s.updateBlock);
   const removeBlock = useStudioStore((s) => s.removeBlock);
@@ -50,11 +55,20 @@ export default function EditorPage() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [isPanning, setIsPanning] = useState(false);
   const [showAddFiles, setShowAddFiles] = useState(false);
   const [showPublishPrompt, setShowPublishPrompt] = useState(false);
   const [publishAcknowledged, setPublishAcknowledged] = useState(false);
   const [isAddingFiles, setIsAddingFiles] = useState(false);
   const addFilesInputRef = useRef<HTMLInputElement>(null);
+  const sheetViewportRef = useRef<HTMLDivElement>(null);
+  const panStateRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
 
   const { width: PAGE_WIDTH, height: PAGE_HEIGHT } = getPageDimensions(orientation);
 
@@ -83,6 +97,59 @@ export default function EditorPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedBlockId, removeBlock]);
 
+  useEffect(() => {
+    const viewport = sheetViewportRef.current;
+    if (!viewport) return;
+
+    function handleWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const direction = e.deltaY < 0 ? 1 : -1;
+      setZoom((current) =>
+        clamp(
+          Number((current + direction * ZOOM_WHEEL_STEP).toFixed(2)),
+          ZOOM_MIN,
+          ZOOM_MAX,
+        ),
+      );
+    }
+
+    viewport.addEventListener("wheel", handleWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  function startViewportPan(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    panStateRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: e.currentTarget.scrollLeft,
+      scrollTop: e.currentTarget.scrollTop,
+    };
+    setIsPanning(true);
+  }
+
+  function moveViewportPan(e: React.PointerEvent<HTMLDivElement>) {
+    const pan = panStateRef.current;
+    if (!pan || pan.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    e.currentTarget.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
+    e.currentTarget.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+  }
+
+  function stopViewportPan(e: React.PointerEvent<HTMLDivElement>) {
+    const pan = panStateRef.current;
+    if (!pan || pan.pointerId !== e.pointerId) return;
+    panStateRef.current = null;
+    setIsPanning(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, delta, over } = event;
     const source = active.data.current?.source;
@@ -96,11 +163,46 @@ export default function EditorPage() {
       // block between pages isn't supported yet, so it never leaves its
       // current pageIndex, and shouldn't align against a different page's
       // blocks either (they're nowhere near it on screen).
-      const blocksOnSamePage = blocks.filter((b) => b.pageIndex === block.pageIndex);
-      const aligned = alignToOtherBlocks(rawX, rawY, block.width, block.height, blocksOnSamePage, block.id);
-      const x = clamp(aligned.x, 0, PAGE_WIDTH - block.width);
-      const y = clamp(aligned.y, 0, PAGE_HEIGHT - block.height);
-      updateBlock(block.id, { x, y });
+      const targetCell = getGridCellIndexes(
+        rawX,
+        rawY,
+        PAGE_WIDTH,
+        PAGE_HEIGHT,
+        gridRows,
+        gridCols,
+      );
+      const blocksInSameCell = blocks.filter((other) => {
+        if (other.pageIndex !== block.pageIndex) return false;
+        const otherCell = getGridCellIndexes(
+          other.x,
+          other.y,
+          PAGE_WIDTH,
+          PAGE_HEIGHT,
+          gridRows,
+          gridCols,
+        );
+        return otherCell.row === targetCell.row && otherCell.col === targetCell.col;
+      });
+      const aligned = alignToOtherBlocks(
+        rawX,
+        rawY,
+        block.width,
+        block.height,
+        blocksInSameCell,
+        block.id,
+      );
+      const placement = fitBlockToGridCell({
+        type: block.type,
+        x: aligned.x,
+        y: aligned.y,
+        width: block.width,
+        height: block.height,
+        pageWidth: PAGE_WIDTH,
+        pageHeight: PAGE_HEIGHT,
+        rows: gridRows,
+        cols: gridCols,
+      });
+      updateBlock(block.id, placement);
       return;
     }
 
@@ -222,7 +324,19 @@ export default function EditorPage() {
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex flex-1 overflow-hidden">
           <Sidebar courseCode={courseCode} />
-          <div className="flex flex-1 flex-col items-center gap-8 overflow-auto bg-zinc-50 py-10">
+          <div
+            ref={sheetViewportRef}
+            onPointerDown={startViewportPan}
+            onPointerMove={moveViewportPan}
+            onPointerUp={stopViewportPan}
+            onPointerCancel={stopViewportPan}
+            onAuxClick={(e) => {
+              if (e.button === 1) e.preventDefault();
+            }}
+            className={`flex flex-1 flex-col items-center gap-8 overflow-auto bg-zinc-50 py-10 ${
+              isPanning ? "cursor-grabbing select-none" : ""
+            }`}
+          >
             {Array.from({ length: pageCount }, (_, pageIndex) => (
               <div
                 key={pageIndex}

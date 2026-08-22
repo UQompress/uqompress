@@ -9,6 +9,7 @@ import type {
   QuestionnaireAnswer,
   Topic,
 } from "./types";
+import { fitBlockToGridCell, getPageDimensions } from "./editor-constants";
 
 type StudioState = {
   courseCode: string;
@@ -165,7 +166,29 @@ export const useStudioStore = create<StudioState>((set) => ({
     }),
 
   setGridSize: (rows, cols) =>
-    set({ gridRows: Math.max(1, rows), gridCols: Math.max(1, cols) }),
+    set((state) => {
+      const gridRows = Math.max(1, rows);
+      const gridCols = Math.max(1, cols);
+      const { width: pageWidth, height: pageHeight } = getPageDimensions(state.orientation);
+      return {
+        gridRows,
+        gridCols,
+        blocks: state.blocks.map((block) => ({
+          ...block,
+          ...fitBlockToGridCell({
+            type: block.type,
+            x: block.x,
+            y: block.y,
+            width: block.width,
+            height: block.height,
+            pageWidth,
+            pageHeight,
+            rows: gridRows,
+            cols: gridCols,
+          }),
+        })),
+      };
+    }),
 
   addPage: () => set((state) => ({ pageCount: state.pageCount + 1 })),
 
@@ -174,14 +197,26 @@ export const useStudioStore = create<StudioState>((set) => ({
   addBlock: (type, content) =>
     set((state) => {
       const size = DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
+      const { width: pageWidth, height: pageHeight } = getPageDimensions(state.orientation);
       blockCounter += 1;
+      const placement = fitBlockToGridCell({
+        type,
+        x: 24 + ((blockCounter * 16) % 120),
+        y: 24 + ((blockCounter * 16) % 120),
+        width: size.width,
+        height: size.height,
+        pageWidth,
+        pageHeight,
+        rows: state.gridRows,
+        cols: state.gridCols,
+      });
       const block: CanvasBlock = {
         id: `block-${Date.now()}-${blockCounter}`,
         type,
         pageIndex: 0,
-        x: 24 + ((blockCounter * 16) % 120),
-        y: 24 + ((blockCounter * 16) % 120),
-        width: size.width,
+        x: placement.x,
+        y: placement.y,
+        width: placement.width,
         height: size.height,
         content,
       };
@@ -191,14 +226,26 @@ export const useStudioStore = create<StudioState>((set) => ({
   addBlockAt: (type, content, x, y, size, pageIndex = 0) =>
     set((state) => {
       const resolvedSize = size ?? DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
+      const { width: pageWidth, height: pageHeight } = getPageDimensions(state.orientation);
+      const placement = fitBlockToGridCell({
+        type,
+        x,
+        y,
+        width: resolvedSize.width,
+        height: resolvedSize.height,
+        pageWidth,
+        pageHeight,
+        rows: state.gridRows,
+        cols: state.gridCols,
+      });
       blockCounter += 1;
       const block: CanvasBlock = {
         id: `block-${Date.now()}-${blockCounter}`,
         type,
         pageIndex,
-        x,
-        y,
-        width: resolvedSize.width,
+        x: placement.x,
+        y: placement.y,
+        width: placement.width,
         height: resolvedSize.height,
         content,
       };

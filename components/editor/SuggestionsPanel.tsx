@@ -199,6 +199,11 @@ export function SuggestionsPanel() {
     await generateContent(answers);
   }
 
+  async function handleQuestionnaireSkip() {
+    closeQuestionnaireModal();
+    await generateContent(undefined);
+  }
+
   const questionnaireModal = questionnaire && (
     <Modal
       title={quizAnswers ? "Your results" : "Quick questionnaire"}
@@ -217,6 +222,7 @@ export function SuggestionsPanel() {
           questions={questionnaire}
           onSubmit={handleQuestionnaireSubmit}
           onCancel={closeQuestionnaireModal}
+          onSkip={handleQuestionnaireSkip}
         />
       )}
     </Modal>
@@ -364,7 +370,7 @@ export function SuggestionsPanel() {
           disabled={isGeneratingQuestionnaire || isGeneratingContent}
           className="border border-grey-light px-4 py-2 text-sm hover:border-uq-purple disabled:opacity-40"
         >
-          {isGeneratingContent ? "Generating..." : "Skip"}
+          {isGeneratingContent ? "Generating..." : "Skip questionnaire"}
         </button>
       </aside>
       {questionnaireModal}

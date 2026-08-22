@@ -22,7 +22,7 @@ export default function Home() {
     <main className="flex flex-1 flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-semibold tracking-tight text-center">
-          CheatSheet Studio
+          UQompress
         </h1>
         <p className="mt-2 text-center text-sm text-grey">
           Build a page-constrained cheat sheet, backed by AI analysis of your
