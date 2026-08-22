@@ -10,3 +10,10 @@
 ✓ Running next.config.ts took 32ms
 
  GET / 200 in 442ms (next.js: 323ms, application-code: 119ms)
+ GET / 200 in 19ms (next.js: 2ms, application-code: 17ms)
+ GET / 200 in 22ms (next.js: 2ms, application-code: 20ms)
+ GET /setup 200 in 31ms (next.js: 17ms, application-code: 14ms)
+ POST /api/extract-pdf 200 in 224ms (next.js: 23ms, application-code: 201ms)
+ POST /api/lookup-ecp 200 in 633ms (next.js: 119ms, application-code: 514ms)
+ POST /api/analyse 200 in 6.5s (next.js: 65ms, application-code: 6.4s)
+ GET /editor 200 in 27ms (next.js: 14ms, application-code: 13ms)
