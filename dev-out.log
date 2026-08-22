@@ -6,14 +6,329 @@
 - Local:         http://localhost:3000
 - Network:       http://10.91.51.136:3000
 - Environments: .env.local
-✓ Ready in 339ms
-✓ Running next.config.ts took 32ms
+✓ Ready in 530ms
+✓ Running next.config.ts took 84ms
 
- GET / 200 in 442ms (next.js: 323ms, application-code: 119ms)
- GET / 200 in 19ms (next.js: 2ms, application-code: 17ms)
- GET / 200 in 22ms (next.js: 2ms, application-code: 20ms)
- GET /setup 200 in 31ms (next.js: 17ms, application-code: 14ms)
- POST /api/extract-pdf 200 in 224ms (next.js: 23ms, application-code: 201ms)
- POST /api/lookup-ecp 200 in 633ms (next.js: 119ms, application-code: 514ms)
- POST /api/analyse 200 in 6.5s (next.js: 65ms, application-code: 6.4s)
- GET /editor 200 in 27ms (next.js: 14ms, application-code: 13ms)
+[browser] ./components/editor/Block.tsx:379:12
+Error: Expected ';', '}' or <eof>
+  377 |   // stacking context, it painted above every OTHER block on the page too —
+  378 |   // including a sibling bullet sitting right above it, which the toolbar's
+> 379 |   # opaque background then visually covered (still in the DOM, just hidden).
+      |            ^^^^^^^^^^
+  380 |   // Fix: render them through a portal into document.body with `position:
+  381 |   // fixed`, positioned from this block's live on-screen rect. That fully
+  382 |   // decouples them from any block's stacking context, and getBoundingClientRect
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./components/editor/Block.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./components/editor/Block.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-client] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-ssr] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-client] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-ssr] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-client] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-ssr] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-client] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+[browser] ./app/editor/page.tsx:29:1
+Error: Export exportPageToPdf doesn't exist in target module
+  27 | } from "@/lib/editor-constants";
+  28 | import { escapeHtml } from "@/lib/html-safe-text";
+> 29 | import { exportPageToPdf } from "@/lib/export-pdf";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  30 | import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+  31 |
+  32 | const ZOOM_MIN = 0.5;
+
+The export exportPageToPdf was not found in module [project]/lib/export-pdf.ts [app-ssr] (ecmascript).
+Did you mean to import exportPagesToPdf?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./app/editor/page.tsx [Client Component Browser]
+    ./app/editor/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/editor/page.tsx [Client Component SSR]
+    ./app/editor/page.tsx [Server Component] 
+ GET / 200 in 645ms (next.js: 379ms, application-code: 266ms)
+ GET / 200 in 22ms (next.js: 3ms, application-code: 19ms)
+ GET / 200 in 24ms (next.js: 3ms, application-code: 21ms)
+ GET /setup 200 in 37ms (next.js: 19ms, application-code: 17ms)
+ POST /api/extract-pdf 200 in 207ms (next.js: 17ms, application-code: 190ms)
+ POST /api/lookup-ecp 200 in 833ms (next.js: 124ms, application-code: 709ms)
+ POST /api/analyse 200 in 7.5s (next.js: 60ms, application-code: 7.5s)
+ GET /editor 200 in 32ms (next.js: 18ms, application-code: 14ms)
+ GET / 200 in 23ms (next.js: 2ms, application-code: 21ms)
+ GET /setup 200 in 13ms (next.js: 3ms, application-code: 10ms)
+ POST /api/extract-pdf 200 in 17ms (next.js: 5ms, application-code: 12ms)
+ POST /api/lookup-ecp 200 in 398ms (next.js: 1.8ms, application-code: 396ms)
+ POST /api/analyse 200 in 6.0s (next.js: 1.7ms, application-code: 6.0s)
+ GET /editor 200 in 20ms (next.js: 7ms, application-code: 13ms)
+ GET / 200 in 20ms (next.js: 1.6ms, application-code: 18ms)
+ GET /setup 200 in 15ms (next.js: 3ms, application-code: 12ms)
+ POST /api/extract-pdf 200 in 18ms (next.js: 7ms, application-code: 11ms)
+ POST /api/lookup-ecp 200 in 239ms (next.js: 1.6ms, application-code: 237ms)
+ POST /api/analyse 200 in 7.0s (next.js: 2ms, application-code: 7.0s)
+ GET /editor 200 in 19ms (next.js: 4ms, application-code: 15ms)
+ GET / 200 in 23ms (next.js: 4ms, application-code: 19ms)
+ GET /setup 200 in 21ms (next.js: 6ms, application-code: 15ms)
+ POST /api/extract-pdf 200 in 12ms (next.js: 3ms, application-code: 9ms)
+ POST /api/lookup-ecp 200 in 1038ms (next.js: 1.6ms, application-code: 1036ms)
+ POST /api/analyse 200 in 7.2s (next.js: 1.4ms, application-code: 7.1s)
+ GET /editor 200 in 19ms (next.js: 4ms, application-code: 15ms)
+ GET / 200 in 42ms (next.js: 4ms, application-code: 38ms)
+ GET /setup 200 in 47ms (next.js: 6ms, application-code: 41ms)
+ POST /api/extract-pdf 200 in 13ms (next.js: 2ms, application-code: 11ms)
+ POST /api/lookup-ecp 200 in 475ms (next.js: 3ms, application-code: 472ms)
+ POST /api/analyse 200 in 6.9s (next.js: 3ms, application-code: 6.9s)
+ GET /editor 200 in 18ms (next.js: 6ms, application-code: 12ms)
+ POST /api/generate-questionnaire 200 in 11.6s (next.js: 28ms, application-code: 11.6s)
+ POST /api/generate-content 200 in 14.9s (next.js: 23ms, application-code: 14.9s)
+ POST /api/generate-content 200 in 20.5s (next.js: 4ms, application-code: 20.5s)
+ GET / 200 in 26ms (next.js: 2ms, application-code: 24ms)
+ GET /setup 200 in 15ms (next.js: 3ms, application-code: 12ms)
+ POST /api/extract-pdf 200 in 15ms (next.js: 4ms, application-code: 11ms)
+ POST /api/lookup-ecp 200 in 444ms (next.js: 1.9ms, application-code: 442ms)
+ POST /api/analyse 200 in 6.2s (next.js: 2ms, application-code: 6.2s)
+ GET /editor 200 in 19ms (next.js: 6ms, application-code: 13ms)
+ POST /api/generate-content 200 in 9.6s (next.js: 5ms, application-code: 9.6s)
+ POST /api/generate-content 200 in 23.7s (next.js: 3ms, application-code: 23.7s)
+ GET / 200 in 19ms (next.js: 1.5ms, application-code: 18ms)
+ GET /setup 200 in 16ms (next.js: 4ms, application-code: 12ms)
+ POST /api/extract-pdf 200 in 9ms (next.js: 1.6ms, application-code: 7ms)
+ POST /api/lookup-ecp 200 in 436ms (next.js: 4ms, application-code: 432ms)
+ POST /api/analyse 200 in 6.2s (next.js: 1.8ms, application-code: 6.2s)
+ GET /editor 200 in 61ms (next.js: 10ms, application-code: 51ms)
+ POST /api/generate-content 200 in 11.1s (next.js: 5ms, application-code: 11.1s)
+ GET / 200 in 47ms (next.js: 6ms, application-code: 41ms)
+ GET /setup 200 in 34ms (next.js: 6ms, application-code: 28ms)
+ POST /api/lookup-ecp 200 in 566ms (next.js: 7ms, application-code: 559ms)
+ POST /api/extract-pdf 200 in 1036ms (next.js: 11ms, application-code: 1025ms)
+ GET /setup 200 in 131ms (next.js: 7ms, application-code: 124ms)
+ POST /api/analyse 200 in 73s (next.js: 3ms, application-code: 73s)
+ GET / 200 in 70ms (next.js: 39ms, application-code: 31ms)
+ GET / 200 in 17ms (next.js: 4ms, application-code: 13ms)
+ GET / 200 in 75ms (next.js: 6ms, application-code: 68ms)
+ GET /setup 200 in 35ms (next.js: 7ms, application-code: 28ms)
+ POST /api/lookup-ecp 200 in 559ms (next.js: 8ms, application-code: 551ms)
+ POST /api/extract-pdf 200 in 753ms (next.js: 6ms, application-code: 747ms)
+ POST /api/analyse 200 in 84s (next.js: 4ms, application-code: 84s)
+ GET /editor 200 in 40ms (next.js: 6ms, application-code: 34ms)
+ POST /api/generate-questionnaire 200 in 17.3s (next.js: 4ms, application-code: 17.3s)
+ POST /api/generate-content 200 in 22.9s (next.js: 4ms, application-code: 22.9s)
+ POST /api/generate-content 200 in 22.4s (next.js: 5ms, application-code: 22.4s)
+ GET /editor 200 in 21ms (next.js: 7ms, application-code: 14ms)
+ GET / 200 in 17ms (next.js: 7ms, application-code: 11ms)
+✓ Compiled in 49ms
+ GET / 200 in 12ms (next.js: 2ms, application-code: 10ms)
+ GET / 200 in 15ms (next.js: 3ms, application-code: 12ms)
+ GET / 200 in 30ms (next.js: 7ms, application-code: 23ms)
+✓ Compiled in 58ms
+ GET / 200 in 12ms (next.js: 2ms, application-code: 10ms)
+ GET / 200 in 16ms (next.js: 3ms, application-code: 13ms)
+✓ Compiled in 73ms
+ GET / 200 in 11ms (next.js: 2ms, application-code: 9ms)
+ GET / 200 in 14ms (next.js: 2ms, application-code: 12ms)
+ GET /setup 200 in 52ms (next.js: 21ms, application-code: 31ms)
+ POST /api/lookup-ecp 200 in 772ms (next.js: 7ms, application-code: 765ms)
+ POST /api/extract-pdf 200 in 824ms (next.js: 5ms, application-code: 819ms)
+ POST /api/analyse 200 in 85s (next.js: 10ms, application-code: 85s)
+ GET /editor 200 in 48ms (next.js: 18ms, application-code: 30ms)
+ POST /api/generate-questionnaire 200 in 20.3s (next.js: 15ms, application-code: 20.3s)
+ POST /api/generate-content 200 in 33.9s (next.js: 14ms, application-code: 33.8s)
+ GET /editor 200 in 18ms (next.js: 3ms, application-code: 15ms)
+ GET /editor 200 in 19ms (next.js: 3ms, application-code: 16ms)
+ GET /editor 200 in 22ms (next.js: 6ms, application-code: 16ms)
+ GET /editor 200 in 17ms (next.js: 5ms, application-code: 12ms)
+ GET /editor 200 in 20ms (next.js: 6ms, application-code: 14ms)
+ GET /editor 200 in 114ms (next.js: 5ms, application-code: 109ms)
+ GET / 200 in 25ms (next.js: 3ms, application-code: 23ms)
+ GET / 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET /setup 200 in 51ms (next.js: 18ms, application-code: 33ms)
+ POST /api/lookup-ecp 200 in 388ms (next.js: 4ms, application-code: 385ms)
+ POST /api/extract-pdf 200 in 906ms (next.js: 4ms, application-code: 902ms)
+ POST /api/analyse 200 in 82s (next.js: 23ms, application-code: 82s)
+ GET /editor 200 in 41ms (next.js: 6ms, application-code: 35ms)
+ POST /api/generate-questionnaire 200 in 15.5s (next.js: 15ms, application-code: 15.5s)
+Content generation failed SyntaxError: Bad escaped character in JSON at position 252 (line 1 column 253)
+    at JSON.parse (<anonymous>)
+    at extractJson (lib\ai-client.ts:11:15)
+    at POST (app\api\generate-content\route.ts:113:31)
+   9 |   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  10 |   const jsonText = fenced ? fenced[1] : trimmed;
+> 11 |   return JSON.parse(jsonText) as T;
+     |               ^
+  12 | }
+  13 |
+  14 | let ungateClient: OpenAI | null = null;
+ POST /api/generate-content 502 in 35.2s (next.js: 12ms, application-code: 35.2s)
+ POST /api/generate-questionnaire 200 in 14.4s (next.js: 7ms, application-code: 14.4s)
+ GET /editor 200 in 173ms (next.js: 7ms, application-code: 166ms)
+ GET /editor 200 in 17ms (next.js: 4ms, application-code: 13ms)
+ POST /api/generate-content 200 in 25.5s (next.js: 6ms, application-code: 25.5s)
+ POST /api/generate-content 200 in 16.0s (next.js: 3ms, application-code: 16.0s)
+ GET /editor 200 in 37ms (next.js: 8ms, application-code: 29ms)
+ GET /editor 200 in 16ms (next.js: 2ms, application-code: 14ms)
+ GET /editor 200 in 16ms (next.js: 2.0ms, application-code: 14ms)
+ GET /editor 200 in 34ms (next.js: 12ms, application-code: 22ms)
+ GET /editor 200 in 1052ms (next.js: 455ms, application-code: 597ms)
+ GET /editor 200 in 18ms (next.js: 3ms, application-code: 16ms)
+ GET /editor 200 in 16ms (next.js: 3ms, application-code: 14ms)
+ POST /api/generate-content 200 in 11.2s (next.js: 4ms, application-code: 11.2s)

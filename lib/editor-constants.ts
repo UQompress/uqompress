@@ -39,6 +39,19 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+// Content dragged in from the AI Suggestion Bar is often much longer than a
+// blank "Text" block's default size — sizing it off the fixed DEFAULT_SIZE
+// clipped the content (TextContent uses overflow-hidden). Rough estimate:
+// ~30 characters per line at the default font size, one line = ~20px tall.
+export function estimateTextBlockSize(content: string): { width: number; height: number } {
+  const CHARS_PER_LINE = 30;
+  const LINE_HEIGHT = 20;
+  const WIDTH = 260;
+  const estimatedLines = Math.max(1, Math.ceil(content.length / CHARS_PER_LINE));
+  const height = clamp(estimatedLines * LINE_HEIGHT + 20, 60, 400);
+  return { width: WIDTH, height };
+}
+
 // Snaps a moving block's edges/center to the nearest matching edge/center of
 // any other block on the canvas, within ALIGN_SNAP_THRESHOLD px — like
 // Figma/PowerPoint alignment guides, so boxes can line up with each other

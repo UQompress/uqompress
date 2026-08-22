@@ -7,6 +7,7 @@ import { Modal } from "@/components/Modal";
 import { useStudioStore } from "@/lib/store";
 import type { GeneratedContent, QuestionnaireAnswer, QuestionnaireQuestion } from "@/lib/types";
 import { Questionnaire } from "./Questionnaire";
+import { QuestionnaireResults } from "./QuestionnaireResults";
 
 function DraggableContentItem({ id, content }: { id: string; content: string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -38,6 +39,45 @@ function ContentSection({ title, items }: { title: string; items: string[] }) {
   );
 }
 
+// References backing the theory/sampleExamples/commonErrors fragments —
+// informational only, not draggable onto the cheat sheet, so it's shown in
+// its own popup rather than inline among the draggable content.
+function SourcesList({ sources }: { sources: string[] }) {
+  if (sources.length === 0) {
+    return <p className="text-sm text-grey">No sources were cited for this content.</p>;
+  }
+
+  function renderSource(source: string) {
+    const urlMatch = source.match(/https?:\/\/\S+/);
+    if (!urlMatch) return source;
+    const url = urlMatch[0];
+    const label = source.slice(0, urlMatch.index).replace(/[—-]\s*$/, "").trim();
+    return (
+      <>
+        {label ? `${label} — ` : ""}
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-uq-purple underline hover:no-underline"
+        >
+          {url}
+        </a>
+      </>
+    );
+  }
+
+  return (
+    <ul className="flex flex-col gap-2 text-sm">
+      {sources.map((source, i) => (
+        <li key={i} className="border border-grey-light px-3 py-2">
+          {renderSource(source)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function SuggestionsPanel() {
   const topics = useStudioStore((s) => s.topics);
   const files = useStudioStore((s) => s.files);
@@ -47,12 +87,16 @@ export function SuggestionsPanel() {
   const setSelectedQuestionTypeId = useStudioStore((s) => s.setSelectedQuestionTypeId);
   const generatedContent = useStudioStore((s) => s.generatedContent);
   const setGeneratedContentStore = useStudioStore((s) => s.setGeneratedContent);
+  const appendGeneratedContentStore = useStudioStore((s) => s.appendGeneratedContent);
   const setQuestionnaireAnswersStore = useStudioStore((s) => s.setQuestionnaireAnswers);
 
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireQuestion[] | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<QuestionnaireAnswer[] | null>(null);
   const [isGeneratingQuestionnaire, setIsGeneratingQuestionnaire] = useState(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSources, setShowSources] = useState(false);
 
   const selectedTopic = topics.find((t) => t.id === selectedTopicId) ?? null;
   const selectedQuestionType =
@@ -85,6 +129,32 @@ export function SuggestionsPanel() {
     }
   }
 
+  async function handleViewMore() {
+    if (!selectedTopic || !selectedQuestionType || !cachedContent) return;
+    setIsLoadingMore(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicName: selectedTopic.name,
+          questionTypeName: selectedQuestionType.name,
+          sourceExcerpt: selectedTopic.sourceExcerpt,
+          sourceFileNames: files.map((f) => f.name),
+          existingContent: cachedContent,
+        }),
+      });
+      const data = (await res.json()) as GeneratedContent & { error?: string };
+      if (data.error) throw new Error(data.error);
+      appendGeneratedContentStore(selectedQuestionType.id, data);
+    } catch {
+      setError("Could not fetch more content for this question type.");
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
   async function handleDoQuestionnaire() {
     if (!selectedTopic || !selectedQuestionType) return;
     setIsGeneratingQuestionnaire(true);
@@ -109,20 +179,46 @@ export function SuggestionsPanel() {
     }
   }
 
-  async function handleQuestionnaireSubmit(answers: QuestionnaireAnswer[]) {
+  // Submitting the quiz shows a results/summary screen first (score + what to
+  // revise) rather than jumping straight into content generation — the
+  // student explicitly continues from there.
+  function handleQuestionnaireSubmit(answers: QuestionnaireAnswer[]) {
     if (!selectedQuestionType) return;
     setQuestionnaireAnswersStore(selectedQuestionType.id, answers);
+    setQuizAnswers(answers);
+  }
+
+  function closeQuestionnaireModal() {
     setQuestionnaire(null);
+    setQuizAnswers(null);
+  }
+
+  async function handleResultsContinue() {
+    const answers = quizAnswers ?? undefined;
+    closeQuestionnaireModal();
     await generateContent(answers);
   }
 
   const questionnaireModal = questionnaire && (
-    <Modal title="Quick questionnaire" onClose={() => setQuestionnaire(null)} size="lg">
-      <Questionnaire
-        questions={questionnaire}
-        onSubmit={handleQuestionnaireSubmit}
-        onCancel={() => setQuestionnaire(null)}
-      />
+    <Modal
+      title={quizAnswers ? "Your results" : "Quick questionnaire"}
+      onClose={closeQuestionnaireModal}
+      size="lg"
+    >
+      {quizAnswers ? (
+        <QuestionnaireResults
+          questions={questionnaire}
+          answers={quizAnswers}
+          onContinue={handleResultsContinue}
+          isGenerating={isGeneratingContent}
+        />
+      ) : (
+        <Questionnaire
+          questions={questionnaire}
+          onSubmit={handleQuestionnaireSubmit}
+          onCancel={closeQuestionnaireModal}
+        />
+      )}
     </Modal>
   );
 
@@ -209,6 +305,29 @@ export function SuggestionsPanel() {
         <ContentSection title="1. Key Theory" items={cachedContent.theory} />
         <ContentSection title="2. Example Question & Solution" items={cachedContent.sampleExamples} />
         <ContentSection title="3. Common Errors" items={cachedContent.commonErrors} />
+        {error && <p className="text-xs text-red-700">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleViewMore}
+            disabled={isLoadingMore}
+            className="self-start border border-grey-light px-4 py-2 text-sm hover:border-uq-purple disabled:opacity-40"
+          >
+            {isLoadingMore ? "Loading..." : "View more"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSources(true)}
+            className="self-start border border-grey-light px-4 py-2 text-sm hover:border-uq-purple"
+          >
+            Sources
+          </button>
+        </div>
+        {showSources && (
+          <Modal title="Sources" onClose={() => setShowSources(false)}>
+            <SourcesList sources={cachedContent.sources} />
+          </Modal>
+        )}
       </aside>
     );
   }

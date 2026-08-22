@@ -37,6 +37,10 @@ export type QuestionnaireAnswer = {
 };
 
 export type GeneratedContent = {
+  // Sources backing theory/sampleExamples/commonErrors below — a file name
+  // (uploaded material) or a link + short label (trusted external source).
+  // Shown via the "Sources" popup, never inlined into a fragment's text.
+  sources: string[];
   theory: string[];
   sampleExamples: string[];
   commonErrors: string[];
@@ -57,6 +61,7 @@ export type BlockType =
 export type CanvasBlock = {
   id: string;
   type: BlockType;
+  pageIndex: number;
   x: number;
   y: number;
   width: number;

@@ -7,14 +7,14 @@ import { useStudioStore } from "@/lib/store";
 
 export default function Home() {
   const router = useRouter();
-  const setCourseCode = useStudioStore((s) => s.setCourseCode);
+  const startNewCourse = useStudioStore((s) => s.startNewCourse);
   const [value, setValue] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const code = value.trim().toUpperCase();
     if (!code) return;
-    setCourseCode(code);
+    startNewCourse(code);
     router.push("/setup");
   }
 

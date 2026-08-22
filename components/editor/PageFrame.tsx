@@ -5,13 +5,15 @@ import { getPageDimensions } from "@/lib/editor-constants";
 import { useStudioStore } from "@/lib/store";
 
 export function PageFrame({
+  index,
   children,
   onBackgroundClick,
 }: {
+  index: number;
   children: React.ReactNode;
   onBackgroundClick: () => void;
 }) {
-  const { setNodeRef } = useDroppable({ id: "page-frame" });
+  const { setNodeRef } = useDroppable({ id: `page-frame-${index}` });
   const orientation = useStudioStore((s) => s.orientation);
   const gridRows = useStudioStore((s) => s.gridRows);
   const gridCols = useStudioStore((s) => s.gridCols);
@@ -19,7 +21,7 @@ export function PageFrame({
 
   return (
     <div
-      id="cheat-sheet-page"
+      id={`cheat-sheet-page-${index}`}
       ref={setNodeRef}
       onClick={onBackgroundClick}
       style={{

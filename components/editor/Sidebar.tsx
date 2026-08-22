@@ -6,6 +6,7 @@ import {
   Check,
   Circle,
   Eye,
+  FilePlus2,
   List,
   Minus,
   MoveRight,
@@ -71,6 +72,8 @@ export function Sidebar({ courseCode }: { courseCode: string }) {
   const gridRows = useStudioStore((s) => s.gridRows);
   const gridCols = useStudioStore((s) => s.gridCols);
   const setGridSize = useStudioStore((s) => s.setGridSize);
+  const pageCount = useStudioStore((s) => s.pageCount);
+  const addPage = useStudioStore((s) => s.addPage);
   const [showSample, setShowSample] = useState(false);
 
   return (
@@ -101,6 +104,14 @@ export function Sidebar({ courseCode }: { courseCode: string }) {
             />
           </label>
         </div>
+        <button
+          type="button"
+          onClick={() => addPage()}
+          className="mt-2 flex w-full items-center justify-center gap-2 border border-grey-light px-3 py-2 text-sm hover:border-uq-purple hover:text-uq-purple"
+        >
+          <FilePlus2 size={16} strokeWidth={1.5} />
+          Add page ({pageCount})
+        </button>
       </div>
 
       <button

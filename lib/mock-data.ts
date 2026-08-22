@@ -139,19 +139,20 @@ export const MOCK_QUESTIONNAIRE: QuestionnaireQuestion[] = [
 ];
 
 export function mockGeneratedContent(topicName: string, questionTypeName: string): GeneratedContent {
-  const citation = "[No AI provider configured | PDF]";
   return {
+    sources: ["No AI provider configured — placeholder content only."],
+    // No citation tags inline in any fragment — matches the real prompt's rule.
     theory: [
-      `${topicName}: what it means and when it applies. ${citation}`,
-      `${questionTypeName}: the standard method for this question type. ${citation}`,
+      `${topicName}: core definition.`,
+      `${questionTypeName}: when this question type applies.`,
+      `Connect an AI provider in Setup to get real, source-checked key points here.`,
+      `Placeholder fragment — no AI provider configured yet.`,
     ],
     sampleExamples: [
-      `Question: a typical "${questionTypeName}" question.`,
-      `Step 1: connect an AI provider in Setup to get a real worked example here.`,
-      `Example Answer: placeholder — no AI provider configured yet.`,
+      `Q: a typical "${questionTypeName}" question.\nApproach: connect an AI provider in Setup to get a real worked example here.\nExample: placeholder — no AI provider configured yet.`,
     ],
     commonErrors: [
-      `Heads up: the usual trap on "${questionTypeName}" is rushing a step and missing an edge case — slow down on this one. ${citation}`,
+      `Heads up: the usual trap on "${questionTypeName}" is rushing a step and missing an edge case — slow down on this one.`,
     ],
   };
 }

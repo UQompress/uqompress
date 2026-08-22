@@ -2,7 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, Circle, Highlighter, RotateCw, X } from "lucide-react";
 import type { BlockType, CanvasBlock } from "@/lib/types";
 import { clamp, snap } from "@/lib/editor-constants";
@@ -336,16 +337,19 @@ export function Block({
   onSelect,
   onChange,
   onDelete,
+  zoom = 1,
 }: {
   block: CanvasBlock;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (patch: Partial<CanvasBlock>) => void;
   onDelete: () => void;
+  zoom?: number;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isHighlighting, setIsHighlighting] = useState(false);
   const [pendingHighlightColor, setPendingHighlightColor] = useState<string>("#FEF9C3");
+  const [overlayRect, setOverlayRect] = useState<DOMRect | null>(null);
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -365,6 +369,34 @@ export function Block({
     setNodeRef(node);
     nodeRef.current = node;
   }
+
+  // The selection toolbar + delete/rotate/resize handles used to be rendered
+  // as normal children of this block's div. That's what caused "editing one
+  // bullet point makes other bullet points disappear": a selected block gets
+  // zIndex 10, and since the toolbar is a DESCENDANT of that elevated
+  // stacking context, it painted above every OTHER block on the page too —
+  // including a sibling bullet sitting right above it, which the toolbar's
+  // opaque background then visually covered (still in the DOM, just hidden).
+  // Fix: render them through a portal into document.body with `position:
+  // fixed`, positioned from this block's live on-screen rect. That fully
+  // decouples them from any block's stacking context, and getBoundingClientRect
+  // already accounts for the canvas zoom transform, scroll, everything.
+  useLayoutEffect(() => {
+    // No need to clear overlayRect when deselected — the render guard below
+    // is `isSelected && overlayRect && ...`, so a stale rect is harmless
+    // once isSelected is false; it just won't be read again until reselected.
+    if (!isSelected) return;
+    function measure() {
+      if (nodeRef.current) setOverlayRect(nodeRef.current.getBoundingClientRect());
+    }
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [isSelected, block.x, block.y, block.width, block.height, block.rotation, zoom]);
 
   // Wraps the current text selection (if it's inside this block's content)
   // in a <mark> — the actual "highlight a word, not the whole box" action.
@@ -432,13 +464,17 @@ export function Block({
     window.addEventListener("pointerup", onUp);
   }
 
-  // For text-capable blocks the corner handle scales font size instead of
-  // the box — box size is adjusted separately via the edge-midpoint handles.
+  // For text-capable blocks the corner handle scales font size AND the box
+  // together (proportionally, so the box grows/shrinks along with the text
+  // instead of the text overflowing a fixed box) — box-only resize is still
+  // available separately via the edge-midpoint handles below.
   function startFontResize(e: React.PointerEvent) {
     e.stopPropagation();
     e.preventDefault();
     const startY = e.clientY;
     const startFont = block.fontSize ?? DEFAULT_FONT_SIZE;
+    const startWidth = block.width;
+    const startHeight = block.height;
 
     function onMove(moveEvent: PointerEvent) {
       const fontSize = clamp(
@@ -446,7 +482,10 @@ export function Block({
         MIN_FONT_SIZE,
         MAX_FONT_SIZE,
       );
-      onChange({ fontSize });
+      const ratio = fontSize / startFont;
+      const width = clamp(Math.round(startWidth * ratio), MIN_WIDTH, 2000);
+      const height = clamp(Math.round(startHeight * ratio), MIN_HEIGHT, 2000);
+      onChange({ fontSize, width, height });
     }
     function onUp() {
       window.removeEventListener("pointermove", onMove);
@@ -536,6 +575,8 @@ export function Block({
     ? SELECTED_BORDER_COLOR
     : (block.borderColor ?? (isBoxed ? DEFAULT_BORDER_COLOR : "transparent"));
 
+  const showToolbar = isSelected && (hasTextColorOptions || isBoxed || hasShapeColorOptions);
+
   return (
     <div
       ref={combinedRef}
@@ -613,156 +654,210 @@ export function Block({
       )}
       {CONTENT_LESS_TYPES.includes(block.type) && <ShapeContent block={block} />}
 
-      {isSelected && (hasTextColorOptions || isBoxed || hasShapeColorOptions) && (
-        <div className="absolute bottom-full left-0 mb-2 flex w-max max-w-xs flex-wrap items-center gap-3 border border-grey-light bg-white px-2 py-1 text-xs">
-          {hasTextColorOptions && (
-            <>
-              <SwatchRow
-                label="Text"
-                options={TEXT_COLOR_OPTIONS}
-                activeValue={block.textColor}
-                fallbackDisplay={TEXT_COLOR_OPTIONS[0].value}
-                onPick={(value) => onChange({ textColor: value })}
-              />
-              <ColorPickerInput value={block.textColor} onChange={(value) => onChange({ textColor: value })} />
-              {block.type === "bullet" ? (
-                <SwatchRow
-                  label="Highlight"
-                  options={HIGHLIGHT_OPTIONS}
-                  activeValue={block.highlightColor}
-                  fallbackDisplay=""
-                  onPick={(value) => onChange({ highlightColor: value })}
-                />
-              ) : isHighlighting ? (
-                <span className="flex items-center gap-1 text-uq-purple">
-                  <Highlighter size={12} strokeWidth={1.5} />
-                  Select text to highlight
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsHighlighting(false);
-                    }}
-                    className="ml-1 underline"
-                  >
-                    Cancel
-                  </button>
-                </span>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <span className="flex items-center gap-1 text-grey">
-                    <Highlighter size={12} strokeWidth={1.5} />
-                    Highlight
-                  </span>
-                  {HIGHLIGHT_OPTIONS.filter((opt) => opt.value).map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      title={`Highlight selection: ${opt.label}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPendingHighlightColor(opt.value);
-                        setIsHighlighting(true);
-                      }}
-                      style={{ backgroundColor: opt.value }}
-                      className="h-4 w-4 rounded-full border border-grey-light"
+      {isSelected &&
+        overlayRect &&
+        createPortal(
+          <>
+            {showToolbar && (
+              <div
+                style={{
+                  position: "fixed",
+                  left: overlayRect.left,
+                  top: overlayRect.top - 8,
+                  transform: "translateY(-100%)",
+                  zIndex: 40,
+                }}
+                className="flex w-max max-w-xs flex-wrap items-center gap-3 border border-grey-light bg-white px-2 py-1 text-xs"
+              >
+                {hasTextColorOptions && (
+                  <>
+                    <SwatchRow
+                      label="Text"
+                      options={TEXT_COLOR_OPTIONS}
+                      activeValue={block.textColor}
+                      fallbackDisplay={TEXT_COLOR_OPTIONS[0].value}
+                      onPick={(value) => onChange({ textColor: value })}
                     />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-          {isBoxed && (
-            <SwatchRow
-              label="Border"
-              options={BORDER_COLOR_OPTIONS}
-              activeValue={block.borderColor}
-              fallbackDisplay={DEFAULT_BORDER_COLOR}
-              onPick={(value) => onChange({ borderColor: value })}
-            />
-          )}
-          {block.type === "table" && (
-            <>
-              <div className="flex items-center gap-1">
-                <span className="text-grey">Rows</span>
-                <button type="button" onClick={(e) => { e.stopPropagation(); removeTableRow(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">−</button>
-                <button type="button" onClick={(e) => { e.stopPropagation(); addTableRow(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">+</button>
+                    <ColorPickerInput value={block.textColor} onChange={(value) => onChange({ textColor: value })} />
+                    {block.type === "bullet" ? (
+                      <SwatchRow
+                        label="Highlight"
+                        options={HIGHLIGHT_OPTIONS}
+                        activeValue={block.highlightColor}
+                        fallbackDisplay=""
+                        onPick={(value) => onChange({ highlightColor: value })}
+                      />
+                    ) : isHighlighting ? (
+                      <span className="flex items-center gap-1 text-uq-purple">
+                        <Highlighter size={12} strokeWidth={1.5} />
+                        Select text to highlight
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsHighlighting(false);
+                          }}
+                          className="ml-1 underline"
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1 text-grey">
+                          <Highlighter size={12} strokeWidth={1.5} />
+                          Highlight
+                        </span>
+                        {HIGHLIGHT_OPTIONS.filter((opt) => opt.value).map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            title={`Highlight selection: ${opt.label}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingHighlightColor(opt.value);
+                              setIsHighlighting(true);
+                            }}
+                            style={{ backgroundColor: opt.value }}
+                            className="h-4 w-4 rounded-full border border-grey-light"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+                {isBoxed && (
+                  <SwatchRow
+                    label="Border"
+                    options={BORDER_COLOR_OPTIONS}
+                    activeValue={block.borderColor}
+                    fallbackDisplay={DEFAULT_BORDER_COLOR}
+                    onPick={(value) => onChange({ borderColor: value })}
+                  />
+                )}
+                {block.type === "table" && (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <span className="text-grey">Rows</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); removeTableRow(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">−</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); addTableRow(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">+</button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-grey">Cols</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); removeTableCol(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">−</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); addTableCol(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">+</button>
+                    </div>
+                  </>
+                )}
+                {hasShapeColorOptions && (
+                  <>
+                    <SwatchRow
+                      label="Color"
+                      options={SHAPE_COLOR_OPTIONS}
+                      activeValue={block.shapeColor}
+                      fallbackDisplay={DEFAULT_SHAPE_COLOR[block.type] ?? "#171717"}
+                      onPick={(value) => onChange({ shapeColor: value })}
+                    />
+                    <ColorPickerInput value={block.shapeColor} onChange={(value) => onChange({ shapeColor: value })} />
+                  </>
+                )}
+                {hasStrokeOptions && (
+                  <ThicknessStepper
+                    value={block.strokeWidth}
+                    onChange={(value) => onChange({ strokeWidth: value })}
+                  />
+                )}
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-grey">Cols</span>
-                <button type="button" onClick={(e) => { e.stopPropagation(); removeTableCol(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">−</button>
-                <button type="button" onClick={(e) => { e.stopPropagation(); addTableCol(); }} className="flex h-4 w-4 items-center justify-center border border-grey-light leading-none">+</button>
-              </div>
-            </>
-          )}
-          {hasShapeColorOptions && (
-            <>
-              <SwatchRow
-                label="Color"
-                options={SHAPE_COLOR_OPTIONS}
-                activeValue={block.shapeColor}
-                fallbackDisplay={DEFAULT_SHAPE_COLOR[block.type] ?? "#171717"}
-                onPick={(value) => onChange({ shapeColor: value })}
-              />
-              <ColorPickerInput value={block.shapeColor} onChange={(value) => onChange({ shapeColor: value })} />
-            </>
-          )}
-          {hasStrokeOptions && (
-            <ThicknessStepper
-              value={block.strokeWidth}
-              onChange={(value) => onChange({ strokeWidth: value })}
-            />
-          )}
-        </div>
-      )}
+            )}
 
-      {isSelected && (
-        <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            aria-label="Delete block"
-            className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center bg-uq-purple text-white"
-          >
-            <X size={12} strokeWidth={2} />
-          </button>
-          <div
-            onPointerDown={startRotate}
-            title="Drag to rotate"
-            className="absolute -top-28 left-1/2 flex h-5 w-5 -translate-x-1/2 cursor-grab items-center justify-center rounded-full bg-uq-purple text-white"
-          >
-            <RotateCw size={12} strokeWidth={2} />
-          </div>
-          {FONT_RESIZABLE_TYPES.includes(block.type) ? (
-            <>
-              <div
-                onPointerDown={startFontResize}
-                title="Drag to resize text"
-                className="absolute -bottom-1 -right-1 h-3 w-3 cursor-nwse-resize bg-uq-purple"
-              />
-              <div
-                onPointerDown={(e) => startEdgeResize(e, "width")}
-                title="Drag to resize box width"
-                className="absolute -right-1 top-1/2 h-3 w-3 -translate-y-1/2 cursor-ew-resize bg-white border border-uq-purple"
-              />
-              <div
-                onPointerDown={(e) => startEdgeResize(e, "height")}
-                title="Drag to resize box height"
-                className="absolute -bottom-1 left-1/2 h-3 w-3 -translate-x-1/2 cursor-ns-resize bg-white border border-uq-purple"
-              />
-            </>
-          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              aria-label="Delete block"
+              style={{
+                position: "fixed",
+                left: overlayRect.right,
+                top: overlayRect.top,
+                transform: "translate(-50%, -50%)",
+                zIndex: 40,
+              }}
+              className="flex h-5 w-5 items-center justify-center bg-uq-purple text-white"
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
             <div
-              onPointerDown={startResize}
-              title="Drag to resize"
-              className="absolute -bottom-1 -right-1 h-3 w-3 cursor-nwse-resize bg-uq-purple"
-            />
-          )}
-        </>
-      )}
+              onPointerDown={startRotate}
+              title="Drag to rotate"
+              style={{
+                position: "fixed",
+                left: overlayRect.left + overlayRect.width / 2,
+                top: overlayRect.top - 112,
+                transform: "translateX(-50%)",
+                zIndex: 40,
+              }}
+              className="flex h-5 w-5 cursor-grab items-center justify-center rounded-full bg-uq-purple text-white"
+            >
+              <RotateCw size={12} strokeWidth={2} />
+            </div>
+            {FONT_RESIZABLE_TYPES.includes(block.type) ? (
+              <>
+                <div
+                  onPointerDown={startFontResize}
+                  title="Drag to resize text and box together"
+                  style={{
+                    position: "fixed",
+                    left: overlayRect.right,
+                    top: overlayRect.bottom,
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 40,
+                  }}
+                  className="h-3 w-3 cursor-nwse-resize bg-uq-purple"
+                />
+                <div
+                  onPointerDown={(e) => startEdgeResize(e, "width")}
+                  title="Drag to resize box width only"
+                  style={{
+                    position: "fixed",
+                    left: overlayRect.right,
+                    top: overlayRect.top + overlayRect.height / 2,
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 40,
+                  }}
+                  className="h-3 w-3 cursor-ew-resize border border-uq-purple bg-white"
+                />
+                <div
+                  onPointerDown={(e) => startEdgeResize(e, "height")}
+                  title="Drag to resize box height only"
+                  style={{
+                    position: "fixed",
+                    left: overlayRect.left + overlayRect.width / 2,
+                    top: overlayRect.bottom,
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 40,
+                  }}
+                  className="h-3 w-3 cursor-ns-resize border border-uq-purple bg-white"
+                />
+              </>
+            ) : (
+              <div
+                onPointerDown={startResize}
+                title="Drag to resize"
+                style={{
+                  position: "fixed",
+                  left: overlayRect.right,
+                  top: overlayRect.bottom,
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 40,
+                }}
+                className="h-3 w-3 cursor-nwse-resize bg-uq-purple"
+              />
+            )}
+          </>,
+          document.body,
+        )}
     </div>
   );
 }

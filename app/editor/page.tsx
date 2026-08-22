@@ -17,9 +17,16 @@ import { SuggestionsPanel } from "@/components/editor/SuggestionsPanel";
 import { PageFrame } from "@/components/editor/PageFrame";
 import { Block } from "@/components/editor/Block";
 import { useStudioStore } from "@/lib/store";
-import { DEFAULT_CONTENT, alignToOtherBlocks, clamp, getPageDimensions, snap } from "@/lib/editor-constants";
+import {
+  DEFAULT_CONTENT,
+  alignToOtherBlocks,
+  clamp,
+  estimateTextBlockSize,
+  getPageDimensions,
+  snap,
+} from "@/lib/editor-constants";
 import { escapeHtml } from "@/lib/html-safe-text";
-import { exportPageToPdf } from "@/lib/export-pdf";
+import { exportPagesToPdf } from "@/lib/export-pdf";
 import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
 
 const ZOOM_MIN = 0.5;
@@ -34,6 +41,7 @@ export default function EditorPage() {
   const setFiles = useStudioStore((s) => s.setFiles);
   const ecpText = useStudioStore((s) => s.ecpText);
   const blocks = useStudioStore((s) => s.blocks);
+  const pageCount = useStudioStore((s) => s.pageCount);
   const addBlockAt = useStudioStore((s) => s.addBlockAt);
   const updateBlock = useStudioStore((s) => s.updateBlock);
   const removeBlock = useStudioStore((s) => s.removeBlock);
@@ -58,6 +66,23 @@ export default function EditorPage() {
     if (!courseCode) router.replace("/");
   }, [courseCode, router]);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!selectedBlockId) return;
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const active = document.activeElement as HTMLElement | null;
+      // Don't hijack Backspace/Delete while the user is typing inside a
+      // block's own editable content.
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) {
+        return;
+      }
+      removeBlock(selectedBlockId);
+      setSelectedBlockId(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedBlockId, removeBlock]);
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, delta, over } = event;
     const source = active.data.current?.source;
@@ -67,15 +92,22 @@ export default function EditorPage() {
       if (!block) return;
       const rawX = clamp(snap(block.x + delta.x / zoom), 0, PAGE_WIDTH - block.width);
       const rawY = clamp(snap(block.y + delta.y / zoom), 0, PAGE_HEIGHT - block.height);
-      // Snap to other blocks' edges/centers if close, otherwise keep the grid snap.
-      const aligned = alignToOtherBlocks(rawX, rawY, block.width, block.height, blocks, block.id);
+      // Snap to other blocks' edges/centers on the SAME page only — moving a
+      // block between pages isn't supported yet, so it never leaves its
+      // current pageIndex, and shouldn't align against a different page's
+      // blocks either (they're nowhere near it on screen).
+      const blocksOnSamePage = blocks.filter((b) => b.pageIndex === block.pageIndex);
+      const aligned = alignToOtherBlocks(rawX, rawY, block.width, block.height, blocksOnSamePage, block.id);
       const x = clamp(aligned.x, 0, PAGE_WIDTH - block.width);
       const y = clamp(aligned.y, 0, PAGE_HEIGHT - block.height);
       updateBlock(block.id, { x, y });
       return;
     }
 
-    if (over?.id !== "page-frame") return;
+    if (!over || typeof over.id !== "string") return;
+    const overMatch = /^page-frame-(\d+)$/.exec(over.id);
+    if (!overMatch) return;
+    const targetPageIndex = Number(overMatch[1]);
     const activeRect = active.rect.current.translated;
     if (!activeRect) return;
     const x = clamp(snap((activeRect.left - over.rect.left) / zoom), 0, PAGE_WIDTH - 40);
@@ -83,18 +115,18 @@ export default function EditorPage() {
 
     if (source === "sidebar") {
       const blockType = active.data.current?.blockType as BlockType;
-      addBlockAt(blockType, DEFAULT_CONTENT[blockType], x, y);
+      addBlockAt(blockType, DEFAULT_CONTENT[blockType], x, y, undefined, targetPageIndex);
     } else if (source === "suggestion-content") {
       const content = active.data.current?.content as string;
-      addBlockAt("text", escapeHtml(content), x, y);
+      addBlockAt("text", escapeHtml(content), x, y, estimateTextBlockSize(content), targetPageIndex);
     }
   }
 
   async function handleExport() {
     setIsExporting(true);
     try {
-      await exportPageToPdf(
-        "cheat-sheet-page",
+      await exportPagesToPdf(
+        pageCount,
         `${courseCode || "cheat-sheet"}.pdf`,
         orientation,
       );
@@ -190,24 +222,32 @@ export default function EditorPage() {
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex flex-1 overflow-hidden">
           <Sidebar courseCode={courseCode} />
-          <div className="flex flex-1 items-start justify-center overflow-auto bg-zinc-50 py-10">
-            <div style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}>
-              <PageFrame onBackgroundClick={() => setSelectedBlockId(null)}>
-                {blocks.map((block) => (
-                  <Block
-                    key={block.id}
-                    block={block}
-                    isSelected={block.id === selectedBlockId}
-                    onSelect={() => setSelectedBlockId(block.id)}
-                    onChange={(patch) => updateBlock(block.id, patch)}
-                    onDelete={() => {
-                      removeBlock(block.id);
-                      setSelectedBlockId(null);
-                    }}
-                  />
-                ))}
-              </PageFrame>
-            </div>
+          <div className="flex flex-1 flex-col items-center gap-8 overflow-auto bg-zinc-50 py-10">
+            {Array.from({ length: pageCount }, (_, pageIndex) => (
+              <div
+                key={pageIndex}
+                style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
+              >
+                <PageFrame index={pageIndex} onBackgroundClick={() => setSelectedBlockId(null)}>
+                  {blocks
+                    .filter((block) => block.pageIndex === pageIndex)
+                    .map((block) => (
+                      <Block
+                        key={block.id}
+                        block={block}
+                        isSelected={block.id === selectedBlockId}
+                        onSelect={() => setSelectedBlockId(block.id)}
+                        onChange={(patch) => updateBlock(block.id, patch)}
+                        onDelete={() => {
+                          removeBlock(block.id);
+                          setSelectedBlockId(null);
+                        }}
+                        zoom={zoom}
+                      />
+                    ))}
+                </PageFrame>
+              </div>
+            ))}
           </div>
           <SuggestionsPanel />
         </div>
