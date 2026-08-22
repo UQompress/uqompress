@@ -13,6 +13,8 @@ export function extractJson<T>(rawText: string): T {
 
 let ungateClient: OpenAI | null = null;
 
+export const UNGATE_SERVICE_TIER = "priority" as const;
+
 function getUngateClient(): OpenAI | null {
   const baseURL = process.env.UNGATE_BASE_URL;
   const apiKey = process.env.UNGATE_API_KEY;
@@ -40,6 +42,8 @@ async function callUngate(prompt: string, maxTokens: number): Promise<string | n
     model,
     messages: [{ role: "user", content: prompt }],
     max_tokens: maxTokens,
+    // `priority` is the backward-compatible request value for Fast mode.
+    service_tier: UNGATE_SERVICE_TIER,
   });
 
   const text = response.choices[0]?.message?.content;
