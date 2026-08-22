@@ -157,21 +157,21 @@ export default function SetupPage() {
               Choose the shape of your physical cheat sheet page.
             </p>
           </div>
-          <div className="flex gap-6">
+          <div className="flex gap-8">
             <button
               type="button"
               onClick={() => handleOrientationChoice("portrait")}
-              className="flex flex-col items-center gap-2 border border-grey-light px-6 py-6 text-sm hover:border-uq-purple hover:text-uq-purple"
+              className="flex flex-col items-center gap-3 border border-grey-light px-12 py-10 text-base hover:border-uq-purple hover:text-uq-purple"
             >
-              <RectangleVertical size={40} strokeWidth={1.5} />
+              <RectangleVertical size={64} strokeWidth={1.5} />
               Portrait
             </button>
             <button
               type="button"
               onClick={() => handleOrientationChoice("landscape")}
-              className="flex flex-col items-center gap-2 border border-grey-light px-6 py-6 text-sm hover:border-uq-purple hover:text-uq-purple"
+              className="flex flex-col items-center gap-3 border border-grey-light px-12 py-10 text-base hover:border-uq-purple hover:text-uq-purple"
             >
-              <RectangleHorizontal size={40} strokeWidth={1.5} />
+              <RectangleHorizontal size={64} strokeWidth={1.5} />
               Landscape
             </button>
           </div>

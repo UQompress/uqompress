@@ -35,15 +35,15 @@ export function PageFrame({
           {Array.from({ length: gridCols - 1 }, (_, i) => (
             <div
               key={`col-${i}`}
-              className="absolute top-0 bottom-0 border-l border-dashed border-grey-light"
-              style={{ left: (width / gridCols) * (i + 1) }}
+              className="absolute top-0 bottom-0 border-l"
+              style={{ left: (width / gridCols) * (i + 1), borderColor: "#8a8a8a" }}
             />
           ))}
           {Array.from({ length: gridRows - 1 }, (_, i) => (
             <div
               key={`row-${i}`}
-              className="absolute left-0 right-0 border-t border-dashed border-grey-light"
-              style={{ top: (height / gridRows) * (i + 1) }}
+              className="absolute left-0 right-0 border-t"
+              style={{ top: (height / gridRows) * (i + 1), borderColor: "#8a8a8a" }}
             />
           ))}
         </div>

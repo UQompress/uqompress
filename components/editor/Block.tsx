@@ -2,8 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
-import { Check, Circle, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Circle, RotateCw, X } from "lucide-react";
 import type { BlockType, CanvasBlock } from "@/lib/types";
 import { clamp, snap } from "@/lib/editor-constants";
 
@@ -18,9 +18,18 @@ const HIGHLIGHT_OPTIONS = [
   { label: "None", value: "" },
   { label: "Purple tint", value: "#F3EAFB" },
 ];
+const BORDER_COLOR_OPTIONS = [
+  { label: "Light", value: "#e5e5e5" },
+  { label: "Dark", value: "#171717" },
+  { label: "UQ purple", value: "#51247A" },
+  { label: "Invisible", value: "transparent" },
+];
+const DEFAULT_BORDER_COLOR = "#e5e5e5";
+const SELECTED_BORDER_COLOR = "#51247A";
 
 const EDITABLE_TYPES: BlockType[] = ["text", "table", "image", "bullet"];
 const CONTENT_LESS_TYPES: BlockType[] = ["divider", "line", "curve", "arrow", "tick", "circle", "cross"];
+const TEXT_COLORABLE_TYPES: BlockType[] = ["text", "bullet"];
 
 function BulletContent({
   content,
@@ -200,6 +209,46 @@ function ImageContent({
   );
 }
 
+function SwatchRow({
+  label,
+  options,
+  activeValue,
+  fallbackDisplay,
+  onPick,
+}: {
+  label: string;
+  options: { label: string; value: string }[];
+  activeValue: string | undefined;
+  fallbackDisplay: string;
+  onPick: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-grey">{label}</span>
+      {options.map((opt) => {
+        const isActive = (activeValue ?? fallbackDisplay) === opt.value;
+        const isInvisible = opt.value === "transparent";
+        return (
+          <button
+            key={opt.label}
+            type="button"
+            title={opt.label}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPick(opt.value);
+            }}
+            style={{
+              backgroundColor: opt.value === "" || isInvisible ? "#ffffff" : opt.value,
+              borderStyle: isInvisible ? "dashed" : "solid",
+            }}
+            className={`h-4 w-4 rounded-full border ${isActive ? "border-2 border-black" : "border-grey-light"}`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function Block({
   block,
   isSelected,
@@ -214,12 +263,18 @@ export function Block({
   onDelete: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: block.id,
       data: { source: "canvas" },
       disabled: isEditing,
     });
+
+  function combinedRef(node: HTMLDivElement | null) {
+    setNodeRef(node);
+    nodeRef.current = node;
+  }
 
   function startResize(e: React.PointerEvent) {
     e.stopPropagation();
@@ -250,12 +305,38 @@ export function Block({
     window.addEventListener("pointerup", onUp);
   }
 
+  function startRotate(e: React.PointerEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = nodeRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    function onMove(moveEvent: PointerEvent) {
+      const angleRad = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+      const deg = Math.round((angleRad * (180 / Math.PI) + 90) / 5) * 5;
+      onChange({ rotation: deg });
+    }
+    function onUp() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
   const canEdit = EDITABLE_TYPES.includes(block.type);
   const isBoxed = !CONTENT_LESS_TYPES.includes(block.type);
+  const hasTextColorOptions = TEXT_COLORABLE_TYPES.includes(block.type);
+  const rotation = block.rotation ?? 0;
+  const borderColor = isSelected
+    ? SELECTED_BORDER_COLOR
+    : (block.borderColor ?? (isBoxed ? DEFAULT_BORDER_COLOR : "transparent"));
 
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       {...(isEditing ? {} : listeners)}
       {...attributes}
       onClick={(e) => {
@@ -272,10 +353,11 @@ export function Block({
         top: block.y,
         width: block.width,
         height: block.height,
-        transform: CSS.Translate.toString(transform),
+        transform: `${CSS.Translate.toString(transform) ?? ""} rotate(${rotation}deg)`,
+        borderColor,
         zIndex: isDragging || isSelected ? 10 : 1,
       }}
-      className={`group border ${isSelected ? "border-uq-purple" : isBoxed ? "border-grey-light" : "border-transparent"} ${isBoxed ? "bg-white" : ""} ${isEditing ? "" : "cursor-grab"}`}
+      className={`group border ${isBoxed ? "bg-white" : ""} ${isEditing ? "" : "cursor-grab"}`}
     >
       {block.type === "text" && (
         <TextContent
@@ -321,36 +403,35 @@ export function Block({
       )}
       {CONTENT_LESS_TYPES.includes(block.type) && <ShapeContent type={block.type} />}
 
-      {isSelected && block.type === "text" && (
-        <div className="absolute -top-9 left-0 flex items-center gap-2 bg-white px-2 py-1 text-xs shadow-none border border-grey-light">
-          <span className="text-grey">Text</span>
-          {TEXT_COLOR_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              title={opt.label}
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange({ textColor: opt.value });
-              }}
-              style={{ backgroundColor: opt.value }}
-              className={`h-4 w-4 rounded-full border ${block.textColor === opt.value ? "border-2 border-black" : "border-grey-light"}`}
+      {isSelected && (hasTextColorOptions || isBoxed) && (
+        <div className="absolute -top-9 left-0 flex items-center gap-3 whitespace-nowrap border border-grey-light bg-white px-2 py-1 text-xs">
+          {hasTextColorOptions && (
+            <SwatchRow
+              label="Text"
+              options={TEXT_COLOR_OPTIONS}
+              activeValue={block.textColor}
+              fallbackDisplay={TEXT_COLOR_OPTIONS[0].value}
+              onPick={(value) => onChange({ textColor: value })}
             />
-          ))}
-          <span className="ml-2 text-grey">Highlight</span>
-          {HIGHLIGHT_OPTIONS.map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              title={opt.label}
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange({ highlightColor: opt.value });
-              }}
-              style={{ backgroundColor: opt.value || "#ffffff" }}
-              className={`h-4 w-4 rounded-full border ${block.highlightColor === opt.value ? "border-2 border-black" : "border-grey-light"}`}
+          )}
+          {hasTextColorOptions && (
+            <SwatchRow
+              label="Highlight"
+              options={HIGHLIGHT_OPTIONS}
+              activeValue={block.highlightColor}
+              fallbackDisplay=""
+              onPick={(value) => onChange({ highlightColor: value })}
             />
-          ))}
+          )}
+          {isBoxed && (
+            <SwatchRow
+              label="Border"
+              options={BORDER_COLOR_OPTIONS}
+              activeValue={block.borderColor}
+              fallbackDisplay={DEFAULT_BORDER_COLOR}
+              onPick={(value) => onChange({ borderColor: value })}
+            />
+          )}
         </div>
       )}
 
@@ -368,7 +449,15 @@ export function Block({
             <X size={12} strokeWidth={2} />
           </button>
           <div
+            onPointerDown={startRotate}
+            title="Drag to rotate"
+            className="absolute -top-16 left-1/2 flex h-5 w-5 -translate-x-1/2 cursor-grab items-center justify-center rounded-full bg-uq-purple text-white"
+          >
+            <RotateCw size={12} strokeWidth={2} />
+          </div>
+          <div
             onPointerDown={startResize}
+            title="Drag to resize"
             className="absolute -bottom-1 -right-1 h-3 w-3 cursor-nwse-resize bg-uq-purple"
           />
         </>

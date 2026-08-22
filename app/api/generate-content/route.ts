@@ -24,20 +24,29 @@ export async function POST(request: Request) {
           .join("\n")}\nUse these answers to bias "commonErrors" toward the mistakes their answers suggest they're prone to.`
       : "The student skipped the diagnostic questionnaire — infer common errors from the source material alone.";
 
-  const prompt = `Draft condensed cheat sheet content for this exam question type.
+  const prompt = `Draft condensed cheat sheet content for this exam question type, written for a
+student who is new to this topic — clear and easy to understand, not just dense jargon.
 
 Topic: ${topicName}
 Question type: ${questionTypeName}
 ${sourceExcerpt ? `Source excerpt: ${sourceExcerpt}\n` : ""}
 ${answersBlock}
 
-Produce short, dense, exam-ready fragments suitable to paste directly onto a physical
-cheat sheet — no filler phrasing. Organise them into exactly three categories:
-- theory: the core definitions/rules/formulas needed
-- sampleExamples: 1-2 short worked examples
-- commonErrors: 1-2 specific mistakes to avoid
+Organise the output into exactly three categories, each with its own voice and purpose:
 
-Each array item should be its own standalone draggable fragment (roughly 1-3 sentences).
+- theory: 2-4 short fragments summarising the KEY POINTS only — the minimum a student needs
+  to recognise and start this question type. Plain language, no unexplained jargon, each
+  fragment short enough to fit on a physical cheat sheet.
+- sampleExamples: walk through ONE specific, concrete worked example end-to-end as a
+  sequence of short numbered-step fragments (e.g. "Step 1: ...", "Step 2: ..."), showing the
+  actual approach applied to real numbers/data, not just an abstract description of the
+  method. Invent a small concrete example if the source material doesn't give one.
+  Each step is its own array item.
+- commonErrors: 1-3 fragments in a casual, engaging, slightly conversational tone (like a
+  friend giving you a heads-up before the exam), each naming ONE specific mistake to avoid.
+
+Each array item should be its own standalone draggable fragment, short enough to paste onto
+a physical cheat sheet.
 
 Return ONLY a JSON object, no prose before or after it, no markdown code fences, shaped
 exactly like this:

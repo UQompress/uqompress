@@ -85,6 +85,9 @@ export const MOCK_QUESTIONNAIRE: QuestionnaireQuestion[] = [
       "Memorise the answer from a past paper",
       "It cannot be solved without a calculator",
     ],
+    correctAnswer: "Identify the underlying structure, then apply the relevant technique",
+    explanation:
+      "Most exam question types reward recognising the pattern first — the technique only clicks once you've spotted what kind of problem you're looking at.",
   },
   {
     id: "mq-2",
@@ -95,11 +98,17 @@ export const MOCK_QUESTIONNAIRE: QuestionnaireQuestion[] = [
       "Skipping a key step or edge case in the method",
       "Using the wrong pen colour",
     ],
+    correctAnswer: "Skipping a key step or edge case in the method",
+    explanation:
+      "Markers usually award partial credit per step, so a skipped edge case quietly costs more marks than students expect.",
   },
   {
     id: "mq-3",
     question: "How confident are you applying the relevant theory from lectures here?",
     options: ["Very confident", "Somewhat confident", "Not very confident", "Not at all"],
+    correctAnswer: "Very confident",
+    explanation:
+      "There's no wrong answer here — this just helps tailor how much theory vs. worked examples you'll see next.",
   },
   {
     id: "mq-4",
@@ -110,6 +119,9 @@ export const MOCK_QUESTIONNAIRE: QuestionnaireQuestion[] = [
       "A list of common mistakes to avoid",
       "I don't need help with this",
     ],
+    correctAnswer: "A worked example",
+    explanation:
+      "No wrong answer — but a worked example is usually the fastest way to internalise a method you haven't drilled yet.",
   },
   {
     id: "mq-5",
@@ -120,20 +132,23 @@ export const MOCK_QUESTIONNAIRE: QuestionnaireQuestion[] = [
       "Writing a clear justification",
       "Nothing — I'm comfortable with this",
     ],
+    correctAnswer: "Executing the method without arithmetic/logic errors",
+    explanation:
+      "This is the single most common bottleneck under time pressure — knowing the method isn't the same as executing it fast and cleanly.",
   },
 ];
 
 export function mockGeneratedContent(topicName: string, questionTypeName: string): GeneratedContent {
   return {
     theory: [
-      `${topicName}: core definition and when it applies (placeholder — no AI provider configured).`,
-      `${questionTypeName}: the standard method/steps used to solve this question type.`,
+      `${topicName} — key idea: understand what the concept means and when it applies before trying to apply it mechanically.`,
+      `${questionTypeName}: know the standard method/steps for this specific question type — that's what's actually being tested.`,
     ],
     sampleExamples: [
-      `Worked example for "${questionTypeName}" (placeholder — replace with a real AI-drafted example).`,
+      `Worked example for "${questionTypeName}" (no AI provider configured yet — connect one in Setup to get a real step-by-step worked example here).`,
     ],
     commonErrors: [
-      `Common error on "${questionTypeName}": skipping a step or misapplying the method under time pressure.`,
+      `Heads up: the usual trap on "${questionTypeName}" is rushing a step and missing an edge case — slow down on this one.`,
     ],
   };
 }

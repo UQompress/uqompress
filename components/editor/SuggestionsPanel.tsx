@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { ArrowLeft } from "lucide-react";
+import { Modal } from "@/components/Modal";
 import { useStudioStore } from "@/lib/store";
 import type { GeneratedContent, QuestionnaireAnswer, QuestionnaireQuestion } from "@/lib/types";
 import { Questionnaire } from "./Questionnaire";
@@ -113,6 +114,16 @@ export function SuggestionsPanel() {
     await generateContent(answers);
   }
 
+  const questionnaireModal = questionnaire && (
+    <Modal title="Quick questionnaire" onClose={() => setQuestionnaire(null)} size="lg">
+      <Questionnaire
+        questions={questionnaire}
+        onSubmit={handleQuestionnaireSubmit}
+        onCancel={() => setQuestionnaire(null)}
+      />
+    </Modal>
+  );
+
   if (topics.length === 0) {
     return (
       <aside className="w-72 shrink-0 border-l border-grey-light px-4 py-6">
@@ -200,60 +211,42 @@ export function SuggestionsPanel() {
     );
   }
 
-  // Level 2: questionnaire in progress.
-  if (questionnaire) {
-    return (
-      <aside className="flex w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-grey-light px-4 py-6">
+  // Level 2: choice between questionnaire and skip (questionnaire itself opens in a modal).
+  return (
+    <>
+      <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-grey-light px-4 py-6">
         <button
           type="button"
-          onClick={() => setQuestionnaire(null)}
+          onClick={() => setSelectedQuestionTypeId(null)}
           className="flex items-center gap-1 text-xs text-grey hover:text-foreground"
         >
           <ArrowLeft size={12} strokeWidth={1.5} />
-          Back
+          Question types
         </button>
-        <Questionnaire
-          questions={questionnaire}
-          onSubmit={handleQuestionnaireSubmit}
-          onCancel={() => setQuestionnaire(null)}
-        />
+        <h2 className="text-sm font-medium">{selectedQuestionType.name}</h2>
+        <p className="text-sm text-grey">
+          Answer 5 quick questions so the suggestions match what you actually need, or skip
+          straight to AI-suggested content.
+        </p>
+        {error && <p className="text-xs text-red-700">{error}</p>}
+        <button
+          type="button"
+          onClick={handleDoQuestionnaire}
+          disabled={isGeneratingQuestionnaire || isGeneratingContent}
+          className="bg-uq-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+        >
+          {isGeneratingQuestionnaire ? "Preparing questionnaire..." : "Do questionnaire"}
+        </button>
+        <button
+          type="button"
+          onClick={() => generateContent(undefined)}
+          disabled={isGeneratingQuestionnaire || isGeneratingContent}
+          className="border border-grey-light px-4 py-2 text-sm hover:border-uq-purple disabled:opacity-40"
+        >
+          {isGeneratingContent ? "Generating..." : "Skip"}
+        </button>
       </aside>
-    );
-  }
-
-  // Level 2: choice between questionnaire and skip.
-  return (
-    <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-grey-light px-4 py-6">
-      <button
-        type="button"
-        onClick={() => setSelectedQuestionTypeId(null)}
-        className="flex items-center gap-1 text-xs text-grey hover:text-foreground"
-      >
-        <ArrowLeft size={12} strokeWidth={1.5} />
-        Question types
-      </button>
-      <h2 className="text-sm font-medium">{selectedQuestionType.name}</h2>
-      <p className="text-sm text-grey">
-        Answer 5 quick questions so the suggestions match what you actually need, or skip
-        straight to AI-suggested content.
-      </p>
-      {error && <p className="text-xs text-red-700">{error}</p>}
-      <button
-        type="button"
-        onClick={handleDoQuestionnaire}
-        disabled={isGeneratingQuestionnaire || isGeneratingContent}
-        className="bg-uq-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-      >
-        {isGeneratingQuestionnaire ? "Preparing questionnaire..." : "Do questionnaire"}
-      </button>
-      <button
-        type="button"
-        onClick={() => generateContent(undefined)}
-        disabled={isGeneratingQuestionnaire || isGeneratingContent}
-        className="border border-grey-light px-4 py-2 text-sm hover:border-uq-purple disabled:opacity-40"
-      >
-        {isGeneratingContent ? "Generating..." : "Skip"}
-      </button>
-    </aside>
+      {questionnaireModal}
+    </>
   );
 }

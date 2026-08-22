@@ -27,6 +27,8 @@ export type QuestionnaireQuestion = {
   id: string;
   question: string;
   options: string[];
+  correctAnswer: string;
+  explanation: string;
 };
 
 export type QuestionnaireAnswer = {
@@ -60,9 +62,11 @@ export type CanvasBlock = {
   y: number;
   width: number;
   height: number;
+  rotation?: number;
   content: string;
   textColor?: string;
   highlightColor?: string;
+  borderColor?: string;
 };
 
 export type AnalysisStatus = "idle" | "loading" | "done" | "error";

@@ -11,13 +11,11 @@ export async function exportPageToPdf(
   const element = document.getElementById(elementId);
   if (!element) throw new Error("Cheat sheet page not found.");
 
-  // Hide the snap-to-grid dot guide and the rows/columns layout guide (both
-  // editing aids, not part of the cheat sheet) for the duration of the capture.
+  // Hide the fine snap-to-grid dot guide (a pure editing aid) for the
+  // duration of the capture, but keep the rows/columns layout divider lines
+  // — those are meant to print as real section dividers on the cheat sheet.
   const previousBackgroundImage = element.style.backgroundImage;
   element.style.backgroundImage = "none";
-  const gridGuide = element.querySelector<HTMLElement>("[data-cheat-sheet-grid-guide]");
-  const previousGridGuideDisplay = gridGuide?.style.display;
-  if (gridGuide) gridGuide.style.display = "none";
 
   let imgData: string;
   try {
@@ -25,7 +23,6 @@ export async function exportPageToPdf(
     imgData = canvas.toDataURL("image/png");
   } finally {
     element.style.backgroundImage = previousBackgroundImage;
-    if (gridGuide) gridGuide.style.display = previousGridGuideDisplay ?? "";
   }
 
   const pdf = new jsPDF({ orientation, unit: "mm", format: "a4" });
