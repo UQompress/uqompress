@@ -7,7 +7,6 @@ import {
   Circle,
   Eye,
   FilePlus2,
-  List,
   Minus,
   MoveRight,
   Image as ImageIcon,
@@ -34,7 +33,6 @@ const DESIGN_ELEMENT_OPTIONS: { type: BlockType; label: string; icon: typeof Typ
   { type: "tick", label: "Tick", icon: Check },
   { type: "circle", label: "Circle", icon: Circle },
   { type: "cross", label: "Cross", icon: X },
-  { type: "bullet", label: "Bullet point", icon: List },
 ];
 
 function SidebarItem({

@@ -41,11 +41,11 @@ const DEFAULT_FONT_SIZE = 14;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 48;
 
-const EDITABLE_TYPES: BlockType[] = ["text", "bullet"];
+const EDITABLE_TYPES: BlockType[] = ["text"];
 const CONTENT_LESS_TYPES: BlockType[] = ["divider", "line", "arrow", "tick", "circle", "cross"];
-const TEXT_COLORABLE_TYPES: BlockType[] = ["text", "bullet"];
+const TEXT_COLORABLE_TYPES: BlockType[] = ["text"];
 const STROKE_ADJUSTABLE_TYPES: BlockType[] = ["line", "arrow"];
-const FONT_RESIZABLE_TYPES: BlockType[] = ["text", "bullet"];
+const FONT_RESIZABLE_TYPES: BlockType[] = ["text"];
 const SHAPE_COLORABLE_TYPES: BlockType[] = ["line", "arrow", "tick", "circle", "cross"];
 const DEFAULT_SHAPE_COLOR: Record<string, string> = {
   line: "#171717",
@@ -54,42 +54,6 @@ const DEFAULT_SHAPE_COLOR: Record<string, string> = {
   circle: "#dc2626",
   cross: "#dc2626",
 };
-
-function BulletContent({
-  content,
-  editing,
-  onCommit,
-  fontSize,
-  highlightColor,
-}: {
-  content: string;
-  editing: boolean;
-  onCommit: (value: string) => void;
-  fontSize?: number;
-  highlightColor?: string;
-}) {
-  const style = { fontSize: fontSize ?? DEFAULT_FONT_SIZE };
-  if (editing) {
-    return (
-      <textarea
-        autoFocus
-        defaultValue={content}
-        onBlur={(e) => onCommit(e.target.value)}
-        style={style}
-        className="h-full w-full resize-none p-2 outline-none"
-      />
-    );
-  }
-  return (
-    <div
-      className="flex h-full w-full items-start gap-1.5 overflow-hidden p-2"
-      style={{ ...style, backgroundColor: highlightColor || undefined }}
-    >
-      <span>•</span>
-      <span>{content || "Double-click to edit"}</span>
-    </div>
-  );
-}
 
 function ShapeContent({ block }: { block: CanvasBlock }) {
   const { type, width, height } = block;
@@ -372,10 +336,10 @@ export function Block({
 
   // The selection toolbar + delete/rotate/resize handles used to be rendered
   // as normal children of this block's div. That's what caused "editing one
-  // bullet point makes other bullet points disappear": a selected block gets
+  // small block makes other small blocks disappear": a selected block gets
   // zIndex 10, and since the toolbar is a DESCENDANT of that elevated
   // stacking context, it painted above every OTHER block on the page too —
-  // including a sibling bullet sitting right above it, which the toolbar's
+  // including a sibling block sitting right above it, which the toolbar's
   // opaque background then visually covered (still in the DOM, just hidden).
   // Fix: render them through a portal into document.body with `position:
   // fixed`, positioned from this block's live on-screen rect. That fully
@@ -640,18 +604,6 @@ export function Block({
           />
         </>
       )}
-      {block.type === "bullet" && (
-        <BulletContent
-          content={block.content}
-          editing={isEditing}
-          fontSize={block.fontSize}
-          highlightColor={block.highlightColor}
-          onCommit={(value) => {
-            onChange({ content: value });
-            setIsEditing(false);
-          }}
-        />
-      )}
       {CONTENT_LESS_TYPES.includes(block.type) && <ShapeContent block={block} />}
 
       {isSelected &&
@@ -679,15 +631,7 @@ export function Block({
                       onPick={(value) => onChange({ textColor: value })}
                     />
                     <ColorPickerInput value={block.textColor} onChange={(value) => onChange({ textColor: value })} />
-                    {block.type === "bullet" ? (
-                      <SwatchRow
-                        label="Highlight"
-                        options={HIGHLIGHT_OPTIONS}
-                        activeValue={block.highlightColor}
-                        fallbackDisplay=""
-                        onPick={(value) => onChange({ highlightColor: value })}
-                      />
-                    ) : isHighlighting ? (
+                    {isHighlighting ? (
                       <span className="flex items-center gap-1 text-uq-purple">
                         <Highlighter size={12} strokeWidth={1.5} />
                         Select text to highlight

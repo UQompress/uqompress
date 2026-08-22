@@ -15,7 +15,6 @@ export const DEFAULT_CONTENT: Record<BlockType, string> = {
   tick: "",
   circle: "",
   cross: "",
-  bullet: "",
 };
 
 // A4 proportions (210:297) scaled down to fit comfortably on screen.

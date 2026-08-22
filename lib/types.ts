@@ -55,8 +55,7 @@ export type BlockType =
   | "arrow"
   | "tick"
   | "circle"
-  | "cross"
-  | "bullet";
+  | "cross";
 
 export type CanvasBlock = {
   id: string;
@@ -70,7 +69,6 @@ export type CanvasBlock = {
   content: string;
   fontSize?: number;
   textColor?: string;
-  highlightColor?: string;
   borderColor?: string;
   shapeColor?: string;
   strokeWidth?: number;

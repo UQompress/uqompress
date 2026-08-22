@@ -71,8 +71,10 @@ const DEFAULT_SIZE: Record<BlockType, { width: number; height: number }> = {
   tick: { width: 32, height: 32 },
   circle: { width: 32, height: 32 },
   cross: { width: 32, height: 32 },
-  bullet: { width: 220, height: 32 },
 };
+// Falls back for a `type` that isn't a current BlockType — e.g. a stale
+// drag payload or dev-mode HMR module desync — instead of crashing.
+const FALLBACK_SIZE = { width: 220, height: 90 };
 
 export const useStudioStore = create<StudioState>((set) => ({
   courseCode: "",
@@ -171,7 +173,7 @@ export const useStudioStore = create<StudioState>((set) => ({
   // page 0 (the first page always exists).
   addBlock: (type, content) =>
     set((state) => {
-      const size = DEFAULT_SIZE[type];
+      const size = DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
       blockCounter += 1;
       const block: CanvasBlock = {
         id: `block-${Date.now()}-${blockCounter}`,
@@ -188,7 +190,7 @@ export const useStudioStore = create<StudioState>((set) => ({
 
   addBlockAt: (type, content, x, y, size, pageIndex = 0) =>
     set((state) => {
-      const resolvedSize = size ?? DEFAULT_SIZE[type];
+      const resolvedSize = size ?? DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
       blockCounter += 1;
       const block: CanvasBlock = {
         id: `block-${Date.now()}-${blockCounter}`,

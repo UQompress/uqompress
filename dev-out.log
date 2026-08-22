@@ -541,3 +541,273 @@ https://react.dev/link/hydration-mismatch
  GET / 200 in 55ms (next.js: 4ms, application-code: 51ms)
  GET / 200 in 41ms (next.js: 4ms, application-code: 38ms)
  GET / 200 in 36ms (next.js: 2ms, application-code: 33ms)
+ GET /setup 200 in 44ms (next.js: 7ms, application-code: 38ms)
+ POST /api/lookup-ecp 200 in 657ms (next.js: 10ms, application-code: 648ms)
+ POST /api/extract-pdf 200 in 216ms (next.js: 4ms, application-code: 212ms)
+ POST /api/analyse 200 in 46s (next.js: 7ms, application-code: 46s)
+ GET /editor 200 in 34ms (next.js: 5ms, application-code: 29ms)
+ POST /api/generate-questionnaire 200 in 20.7s (next.js: 15ms, application-code: 20.7s)
+ POST /api/generate-content 200 in 22.2s (next.js: 4ms, application-code: 22.2s)
+ POST /api/generate-content 200 in 41s (next.js: 5ms, application-code: 41s)
+ GET /editor 200 in 96ms (next.js: 9ms, application-code: 87ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SegmentViewNode type="page" pagePath="editor/pag...">
+      <SegmentTrieNode>
+      <ClientPageRoot Component={function EditorPage} serverProvidedParams={{...}}>
+        <EditorPage params={Promise} searchParams={Promise}>
+          <div className="flex h-scr...">
+            <TopBar>
+            <div>
+            <DndContext sensors={[...]} onDragEnd={function handleDragEnd}>
+              <div className="flex flex-...">
+                <Sidebar courseCode="">
+                  <aside className="flex w-52 ...">
+                    <div>
+                    <button>
+                    <div>
+                      <h2>
+                      <div className="flex flex-...">
+                        <SidebarItem type="text" label="Text" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="table" label="Table" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="image" label="Image" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="divider" label="Divider" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                    <div>
+                      <h2>
+                      <div className="flex flex-...">
+                        <SidebarItem type="line" label="Straight line" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="arrow" label="Arrow" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="tick" label="Tick" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="circle" label="Circle" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="cross" label="Cross" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="bullet" label="Bullet point" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-2"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                ...
+              ...
+              ...
+ 
+ GET / 200 in 63ms (next.js: 4ms, application-code: 58ms)
+ GET / 200 in 68ms (next.js: 7ms, application-code: 61ms)
+ GET / 200 in 65ms (next.js: 6ms, application-code: 59ms)
+ GET / 200 in 42ms (next.js: 3ms, application-code: 39ms)
+ GET / 200 in 59ms (next.js: 9ms, application-code: 49ms)
+ GET /setup 200 in 41ms (next.js: 8ms, application-code: 34ms)
+ POST /api/lookup-ecp 200 in 278ms (next.js: 6ms, application-code: 271ms)
+ POST /api/extract-pdf 200 in 1963ms (next.js: 4ms, application-code: 1960ms)
+ POST /api/analyse 200 in 65s (next.js: 6ms, application-code: 65s)
+ GET /editor 200 in 35ms (next.js: 6ms, application-code: 29ms)
+ POST /api/generate-questionnaire 200 in 14.2s (next.js: 4ms, application-code: 14.2s)
+ POST /api/generate-content 200 in 32.5s (next.js: 4ms, application-code: 32.5s)
+ GET /editor 200 in 23ms (next.js: 8ms, application-code: 15ms)
+✓ Compiled in 43ms
+ GET /editor 200 in 75ms (next.js: 6ms, application-code: 69ms)
+ GET / 200 in 16ms (next.js: 6ms, application-code: 9ms)
+ GET / 200 in 13ms (next.js: 1.9ms, application-code: 11ms)
+ GET / 200 in 16ms (next.js: 4ms, application-code: 12ms)
+ GET / 200 in 14ms (next.js: 2ms, application-code: 12ms)
+ GET / 200 in 80ms (next.js: 2ms, application-code: 77ms)
+ GET / 200 in 15ms (next.js: 3ms, application-code: 12ms)
+ GET / 200 in 17ms (next.js: 4ms, application-code: 13ms)
+ GET / 200 in 16ms (next.js: 2.0ms, application-code: 14ms)
+ GET / 200 in 16ms (next.js: 2ms, application-code: 14ms)
+ GET / 200 in 16ms (next.js: 3ms, application-code: 13ms)
+ GET / 200 in 14ms (next.js: 2ms, application-code: 12ms)
+ POST /api/generate-questionnaire 200 in 15.3s (next.js: 4ms, application-code: 15.3s)
+ POST /api/generate-questionnaire 200 in 17.1s (next.js: 4ms, application-code: 17.1s)
+ POST /api/generate-questionnaire 200 in 15.5s (next.js: 3ms, application-code: 15.5s)
+ POST /api/generate-questionnaire 200 in 16.9s (next.js: 3ms, application-code: 16.9s)
+ POST /api/generate-questionnaire 200 in 16.6s (next.js: 3ms, application-code: 16.6s)
+ GET /setup 200 in 43ms (next.js: 16ms, application-code: 27ms)
+ POST /api/lookup-ecp 200 in 342ms (next.js: 4ms, application-code: 337ms)
+ POST /api/extract-pdf 200 in 841ms (next.js: 4ms, application-code: 837ms)
+ POST /api/analyse 200 in 43s (next.js: 7ms, application-code: 43s)
+ GET /editor 200 in 46ms (next.js: 16ms, application-code: 30ms)
+ POST /api/generate-questionnaire 200 in 19.3s (next.js: 4ms, application-code: 19.3s)
+[browser] Uncaught TypeError: Cannot read properties of undefined (reading 'width')
+    at eval (lib/store.ts:181:21)
+    at addBlock (lib/store.ts:172:5)
+    at onClick (components/editor/Sidebar.tsx:93:12)
+    at button (<anonymous>)
+    at SidebarItem (components/editor/Sidebar.tsx:90:25)
+    at <unknown> (components/editor/SuggestionsPanel.tsx:19:6)
+    at Array.map (<anonymous>)
+    at Sidebar (components/editor/SuggestionsPanel.tsx:19:5)
+    at EditorPage (app/editor/page.tsx:224:11)
+  179 |         x: 24 + ((blockCounter * 16) % 120),
+  180 |         y: 24 + ((blockCounter * 16) % 120),
+> 181 |         width: size.width,
+      |                     ^
+  182 |         height: size.height,
+  183 |         content,
+  184 |       };
+ POST /api/generate-content 200 in 31.6s (next.js: 5ms, application-code: 31.6s)
+ GET /editor 200 in 24ms (next.js: 10ms, application-code: 14ms)
+✓ Compiled in 71ms
+ GET / 200 in 14ms (next.js: 6ms, application-code: 8ms)
+ GET / 200 in 18ms (next.js: 7ms, application-code: 11ms)
+✓ Compiled in 36ms
+ GET / 200 in 17ms (next.js: 5ms, application-code: 12ms)
+✓ Compiled in 32ms
+ GET /setup 200 in 52ms (next.js: 23ms, application-code: 30ms)
+ POST /api/lookup-ecp 200 in 554ms (next.js: 7ms, application-code: 547ms)
+ GET / 200 in 32ms (next.js: 5ms, application-code: 27ms)
