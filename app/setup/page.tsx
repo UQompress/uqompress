@@ -195,20 +195,28 @@ export default function SetupPage() {
           <label className="text-sm font-medium">
             Learning outcomes{" "}
             <span className="font-normal text-grey">
-              (looked up automatically from the course profile — edit or paste over it if needed)
+              {ecpLookupStatus === "done"
+                ? "(looked up automatically from the course profile)"
+                : "(paste from the ECP manually — auto-lookup didn't find this course)"}
             </span>
           </label>
-          <textarea
-            value={ecpText}
-            onChange={(e) => setEcpText(e.target.value)}
-            rows={6}
-            placeholder={
-              ecpLookupStatus === "loading"
-                ? "Looking up learning outcomes..."
-                : "Paste course learning outcomes here..."
-            }
-            className="w-full resize-none border border-grey-light px-3 py-2 text-sm outline-none focus:border-uq-purple"
-          />
+          {ecpLookupStatus === "done" ? (
+            <div className="whitespace-pre-wrap border border-grey-light bg-zinc-50 px-3 py-2 text-sm text-grey">
+              {ecpText}
+            </div>
+          ) : (
+            <textarea
+              value={ecpText}
+              onChange={(e) => setEcpText(e.target.value)}
+              rows={6}
+              placeholder={
+                ecpLookupStatus === "loading"
+                  ? "Looking up learning outcomes..."
+                  : "Paste course learning outcomes here..."
+              }
+              className="w-full resize-none border border-grey-light px-3 py-2 text-sm outline-none focus:border-uq-purple"
+            />
+          )}
           {ecpLookupStatus === "loading" && (
             <p className="flex items-center gap-1.5 text-xs text-grey">
               <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />

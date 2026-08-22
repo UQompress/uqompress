@@ -24,7 +24,7 @@ const INFS1200_SAMPLES: SampleCheatsheet[] = [
     courseCode: "INFS1200",
     title: "Cheat Sheet v2",
     sourceNote: "Dense two-page A4 layout covering Modules 0-5.",
-    pdfPath: "/samples/INFS1200/infs1200-cheat-sheet-v2.pdf",
+    pdfPath: "/samples/INFS1200/Cheat%20Sheet%20v2_removed.pdf",
     sections: [
       {
         heading: "Module 0 — DBMS fundamentals",
@@ -63,7 +63,7 @@ const INFS1200_SAMPLES: SampleCheatsheet[] = [
     courseCode: "INFS1200",
     title: "INFS1200 Exam Notes",
     sourceNote: "Studocu-hosted notes with explicit relational mapping notation templates.",
-    pdfPath: "/samples/INFS1200/infs1200-exam-notes.pdf",
+    pdfPath: "/samples/INFS1200/Cheat%20Sheet.pdf",
     sections: [
       {
         heading: "Constraints (integrity violations)",
@@ -97,7 +97,7 @@ const INFS1200_SAMPLES: SampleCheatsheet[] = [
     courseCode: "INFS1200",
     title: "Review Note — Exam Notes Summary",
     sourceNote: "Includes worked DDL/DML/query examples and a full BCNF decomposition walkthrough — good reference for 'Sample examples' content.",
-    pdfPath: "/samples/INFS1200/infs1200-review-note.pdf",
+    pdfPath: "/samples/INFS1200/Review%20note.pdf",
     sections: [
       {
         heading: "DDL example — CREATE TABLE with composite key & multiple FKs",

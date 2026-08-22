@@ -11,13 +11,13 @@ import {
   MoveRight,
   Image as ImageIcon,
   PenLine,
-  Spline,
   Table,
   Type,
   X,
 } from "lucide-react";
 import type { BlockType } from "@/lib/types";
 import { useStudioStore } from "@/lib/store";
+import { DEFAULT_CONTENT } from "@/lib/editor-constants";
 import { ViewSampleModal } from "./ViewSampleModal";
 
 const BLOCK_OPTIONS: { type: BlockType; label: string; icon: typeof Type }[] = [
@@ -29,7 +29,6 @@ const BLOCK_OPTIONS: { type: BlockType; label: string; icon: typeof Type }[] = [
 
 const DESIGN_ELEMENT_OPTIONS: { type: BlockType; label: string; icon: typeof Type }[] = [
   { type: "line", label: "Straight line", icon: PenLine },
-  { type: "curve", label: "Curly line", icon: Spline },
   { type: "arrow", label: "Arrow", icon: MoveRight },
   { type: "tick", label: "Tick", icon: Check },
   { type: "circle", label: "Circle", icon: Circle },
@@ -46,6 +45,7 @@ function SidebarItem({
   label: string;
   icon: typeof Type;
 }) {
+  const addBlock = useStudioStore((s) => s.addBlock);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `sidebar-${type}`,
     data: { source: "sidebar", blockType: type },
@@ -57,6 +57,8 @@ function SidebarItem({
       {...listeners}
       {...attributes}
       type="button"
+      onClick={() => addBlock(type, DEFAULT_CONTENT[type])}
+      title="Click to add, or drag onto the canvas"
       className={`flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hover:border-uq-purple hover:text-uq-purple ${isDragging ? "opacity-40" : ""}`}
     >
       <Icon size={16} strokeWidth={1.5} />

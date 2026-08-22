@@ -17,23 +17,10 @@ import { SuggestionsPanel } from "@/components/editor/SuggestionsPanel";
 import { PageFrame } from "@/components/editor/PageFrame";
 import { Block } from "@/components/editor/Block";
 import { useStudioStore } from "@/lib/store";
-import { clamp, getPageDimensions, snap } from "@/lib/editor-constants";
+import { DEFAULT_CONTENT, alignToOtherBlocks, clamp, getPageDimensions, snap } from "@/lib/editor-constants";
+import { escapeHtml } from "@/lib/html-safe-text";
 import { exportPageToPdf } from "@/lib/export-pdf";
 import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
-
-const DEFAULT_CONTENT: Record<BlockType, string> = {
-  text: "",
-  table: "Header 1 | Header 2\nRow 1 | Row 2",
-  image: "",
-  divider: "",
-  line: "",
-  curve: "",
-  arrow: "",
-  tick: "",
-  circle: "",
-  cross: "",
-  bullet: "",
-};
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 1.5;
@@ -78,8 +65,12 @@ export default function EditorPage() {
     if (source === "canvas") {
       const block = blocks.find((b) => b.id === active.id);
       if (!block) return;
-      const x = clamp(snap(block.x + delta.x / zoom), 0, PAGE_WIDTH - block.width);
-      const y = clamp(snap(block.y + delta.y / zoom), 0, PAGE_HEIGHT - block.height);
+      const rawX = clamp(snap(block.x + delta.x / zoom), 0, PAGE_WIDTH - block.width);
+      const rawY = clamp(snap(block.y + delta.y / zoom), 0, PAGE_HEIGHT - block.height);
+      // Snap to other blocks' edges/centers if close, otherwise keep the grid snap.
+      const aligned = alignToOtherBlocks(rawX, rawY, block.width, block.height, blocks, block.id);
+      const x = clamp(aligned.x, 0, PAGE_WIDTH - block.width);
+      const y = clamp(aligned.y, 0, PAGE_HEIGHT - block.height);
       updateBlock(block.id, { x, y });
       return;
     }
@@ -95,7 +86,7 @@ export default function EditorPage() {
       addBlockAt(blockType, DEFAULT_CONTENT[blockType], x, y);
     } else if (source === "suggestion-content") {
       const content = active.data.current?.content as string;
-      addBlockAt("text", content, x, y);
+      addBlockAt("text", escapeHtml(content), x, y);
     }
   }
 

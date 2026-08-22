@@ -48,7 +48,6 @@ export type BlockType =
   | "image"
   | "divider"
   | "line"
-  | "curve"
   | "arrow"
   | "tick"
   | "circle"
@@ -64,9 +63,12 @@ export type CanvasBlock = {
   height: number;
   rotation?: number;
   content: string;
+  fontSize?: number;
   textColor?: string;
   highlightColor?: string;
   borderColor?: string;
+  shapeColor?: string;
+  strokeWidth?: number;
 };
 
 export type AnalysisStatus = "idle" | "loading" | "done" | "error";

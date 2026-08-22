@@ -56,7 +56,6 @@ const DEFAULT_SIZE: Record<BlockType, { width: number; height: number }> = {
   image: { width: 200, height: 140 },
   divider: { width: 240, height: 12 },
   line: { width: 160, height: 32 },
-  curve: { width: 160, height: 60 },
   arrow: { width: 160, height: 32 },
   tick: { width: 32, height: 32 },
   circle: { width: 32, height: 32 },

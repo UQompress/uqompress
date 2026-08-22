@@ -19,7 +19,7 @@ function DraggableContentItem({ id, content }: { id: string; content: string }) 
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`cursor-grab border border-grey-light px-3 py-2 text-sm hover:border-uq-purple ${isDragging ? "opacity-40" : ""}`}
+      className={`cursor-grab whitespace-pre-wrap border border-grey-light px-3 py-2 text-sm hover:border-uq-purple ${isDragging ? "opacity-40" : ""}`}
     >
       {content}
     </div>
@@ -40,6 +40,7 @@ function ContentSection({ title, items }: { title: string; items: string[] }) {
 
 export function SuggestionsPanel() {
   const topics = useStudioStore((s) => s.topics);
+  const files = useStudioStore((s) => s.files);
   const selectedTopicId = useStudioStore((s) => s.selectedTopicId);
   const selectedQuestionTypeId = useStudioStore((s) => s.selectedQuestionTypeId);
   const setSelectedTopicId = useStudioStore((s) => s.setSelectedTopicId);
@@ -70,6 +71,7 @@ export function SuggestionsPanel() {
           topicName: selectedTopic.name,
           questionTypeName: selectedQuestionType.name,
           sourceExcerpt: selectedTopic.sourceExcerpt,
+          sourceFileNames: files.map((f) => f.name),
           answers,
         }),
       });
@@ -204,9 +206,9 @@ export function SuggestionsPanel() {
           Question types
         </button>
         <h2 className="text-sm font-medium">{selectedQuestionType.name}</h2>
-        <ContentSection title="Theory" items={cachedContent.theory} />
-        <ContentSection title="Sample examples" items={cachedContent.sampleExamples} />
-        <ContentSection title="Common errors" items={cachedContent.commonErrors} />
+        <ContentSection title="1. Key Theory" items={cachedContent.theory} />
+        <ContentSection title="2. Example Question & Solution" items={cachedContent.sampleExamples} />
+        <ContentSection title="3. Common Errors" items={cachedContent.commonErrors} />
       </aside>
     );
   }

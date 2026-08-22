@@ -139,16 +139,19 @@ export const MOCK_QUESTIONNAIRE: QuestionnaireQuestion[] = [
 ];
 
 export function mockGeneratedContent(topicName: string, questionTypeName: string): GeneratedContent {
+  const citation = "[No AI provider configured | PDF]";
   return {
     theory: [
-      `${topicName} — key idea: understand what the concept means and when it applies before trying to apply it mechanically.`,
-      `${questionTypeName}: know the standard method/steps for this specific question type — that's what's actually being tested.`,
+      `${topicName}: what it means and when it applies. ${citation}`,
+      `${questionTypeName}: the standard method for this question type. ${citation}`,
     ],
     sampleExamples: [
-      `Worked example for "${questionTypeName}" (no AI provider configured yet — connect one in Setup to get a real step-by-step worked example here).`,
+      `Question: a typical "${questionTypeName}" question.`,
+      `Step 1: connect an AI provider in Setup to get a real worked example here.`,
+      `Example Answer: placeholder — no AI provider configured yet.`,
     ],
     commonErrors: [
-      `Heads up: the usual trap on "${questionTypeName}" is rushing a step and missing an edge case — slow down on this one.`,
+      `Heads up: the usual trap on "${questionTypeName}" is rushing a step and missing an edge case — slow down on this one. ${citation}`,
     ],
   };
 }
