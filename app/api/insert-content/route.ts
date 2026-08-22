@@ -1,4 +1,5 @@
 import { extractJson, getCompletionText } from "@/lib/ai-client";
+import { contentGuidePromptBlock } from "@/lib/content-guide";
 import type { Topic } from "@/lib/types";
 
 type InsertContentBody = {
@@ -16,14 +17,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing topic." }, { status: 400 });
   }
 
-  const prompt = `Draft a condensed cheat sheet entry for this exam topic.
+  const prompt = `${contentGuidePromptBlock()}Draft a condensed cheat sheet entry for this exam topic.
 
 Topic: ${topic.name}
 Why it matters: ${topic.rationale}
 Source excerpt: ${topic.sourceExcerpt}
 
-Write under 60 words, dense and exam-ready, no filler phrasing, suitable to paste
-directly onto a physical cheat sheet.
+Apply the guide's writing rules (§1, §4, §6). Use the card format "[Concept Name]: body"
+— one concept, label is the actual name, no narrator lead-in, no filler, no second person.
+Stay within the word budgets from §4. Prefer uploaded material; web lookup only when §6
+permits. Run the §10 self-check before returning.
 
 Return ONLY a JSON object, no prose before or after it, no markdown code fences, shaped
 exactly like this: {"content": string}`;
