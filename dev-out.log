@@ -121,3 +121,8 @@ Analysis failed Error: Unexpected response shape from Ungate.
  GET / 200 in 52ms (next.js: 6ms, application-code: 47ms)
  GET /setup 200 in 20ms (next.js: 2ms, application-code: 18ms)
  POST /api/lookup-ecp 200 in 386ms (next.js: 9ms, application-code: 377ms)
+ GET /setup 200 in 71ms (next.js: 5ms, application-code: 66ms)
+ GET / 200 in 11ms (next.js: 3ms, application-code: 9ms)
+ GET / 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET /setup 200 in 26ms (next.js: 4ms, application-code: 22ms)
+ POST /api/lookup-ecp 200 in 457ms (next.js: 11ms, application-code: 446ms)
