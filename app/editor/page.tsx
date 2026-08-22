@@ -9,13 +9,16 @@ import {
 } from "@dnd-kit/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Download, FilePlus, ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { Modal } from "@/components/Modal";
 import { Sidebar } from "@/components/editor/Sidebar";
 import { SuggestionsPanel } from "@/components/editor/SuggestionsPanel";
 import { PageFrame } from "@/components/editor/PageFrame";
 import { Block } from "@/components/editor/Block";
+import { FormattingToolbar } from "@/components/editor/FormattingToolbar";
+import { ExportPanel } from "@/components/editor/ExportPanel";
+import { ViewSampleModal } from "@/components/editor/ViewSampleModal";
 import { useStudioStore } from "@/lib/store";
 import {
   DEFAULT_CONTENT,
@@ -27,9 +30,9 @@ import {
   getPageDimensions,
   snap,
 } from "@/lib/editor-constants";
-import { escapeHtml } from "@/lib/html-safe-text";
+import { plainTextToBlockHtml } from "@/lib/rich-text";
 import { exportPagesToPdf } from "@/lib/export-pdf";
-import type { BlockType, ExtractedFile, Topic } from "@/lib/types";
+import type { BlockType, ExtractedFile, TextBlockKind, Topic } from "@/lib/types";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 1.5;
@@ -51,9 +54,14 @@ export default function EditorPage() {
   const updateBlock = useStudioStore((s) => s.updateBlock);
   const removeBlock = useStudioStore((s) => s.removeBlock);
   const mergeAnalysisResult = useStudioStore((s) => s.mergeAnalysisResult);
+  const undo = useStudioStore((s) => s.undo);
+  const redo = useStudioStore((s) => s.redo);
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportPanel, setShowExportPanel] = useState(false);
+  const [showSample, setShowSample] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<"edit" | "compare">("edit");
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [showAddFiles, setShowAddFiles] = useState(false);
@@ -82,6 +90,15 @@ export default function EditorPage() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      const isMeta = e.metaKey || e.ctrlKey;
+      if (isMeta && e.key.toLowerCase() === "z") {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
       if (!selectedBlockId) return;
       if (e.key !== "Delete" && e.key !== "Backspace") return;
       const active = document.activeElement as HTMLElement | null;
@@ -95,7 +112,7 @@ export default function EditorPage() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedBlockId, removeBlock]);
+  }, [selectedBlockId, removeBlock, undo, redo]);
 
   useEffect(() => {
     const viewport = sheetViewportRef.current;
@@ -217,21 +234,40 @@ export default function EditorPage() {
 
     if (source === "sidebar") {
       const blockType = active.data.current?.blockType as BlockType;
-      addBlockAt(blockType, DEFAULT_CONTENT[blockType], x, y, undefined, targetPageIndex);
+      const textKind = active.data.current?.textKind as TextBlockKind | undefined;
+      addBlockAt(
+        blockType,
+        DEFAULT_CONTENT[blockType],
+        x,
+        y,
+        undefined,
+        targetPageIndex,
+        textKind ? { textKind } : undefined,
+      );
     } else if (source === "suggestion-content") {
       const content = active.data.current?.content as string;
-      addBlockAt("text", escapeHtml(content), x, y, estimateTextBlockSize(content), targetPageIndex);
+      addBlockAt(
+        "text",
+        plainTextToBlockHtml(content, "body"),
+        x,
+        y,
+        estimateTextBlockSize(content),
+        targetPageIndex,
+        { textKind: "body" },
+      );
     }
   }
 
-  async function handleExport() {
+  async function handleExport(pageIndexes: number[]) {
     setIsExporting(true);
     try {
+      setSelectedBlockId(null);
       await exportPagesToPdf(
-        pageCount,
+        pageIndexes,
         `${courseCode || "cheat-sheet"}.pdf`,
         orientation,
       );
+      setShowExportPanel(false);
       setPublishAcknowledged(false);
       setShowPublishPrompt(true);
     } finally {
@@ -255,17 +291,21 @@ export default function EditorPage() {
       // Re-run analysis against the full merged file set (not just the new
       // files) so topic/question counts stay consistent across the whole
       // corpus, then replace the previous analysis with this refreshed one.
-      const analyseRes = await fetch("/api/analyse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseCode, ecpText, files: mergedFiles }),
-      });
-      if (analyseRes.ok) {
-        const analyseData = (await analyseRes.json()) as {
-          topics: Topic[];
-          totalQuestions: number;
-        };
-        mergeAnalysisResult(analyseData.topics, analyseData.totalQuestions);
+      try {
+        const analyseRes = await fetch("/api/analyse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ courseCode, ecpText, files: mergedFiles }),
+        });
+        if (analyseRes.ok) {
+          const analyseData = (await analyseRes.json()) as {
+            topics: Topic[];
+            totalQuestions: number;
+          };
+          mergeAnalysisResult(analyseData.topics, analyseData.totalQuestions);
+        }
+      } catch {
+        // TEMP: bypass analysis failure — keep existing topics and continue.
       }
       setShowAddFiles(false);
     } finally {
@@ -273,99 +313,136 @@ export default function EditorPage() {
     }
   }
 
+  const selectedBlock = blocks.find((block) => block.id === selectedBlockId) ?? null;
+
   return (
     <div className="flex h-screen flex-col">
-      <TopBar courseCode={courseCode} active="editor" />
-      <div className="flex items-center justify-between border-b border-grey-light px-8 py-3">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium">Editor</span>
-          <button
-            type="button"
-            onClick={() => setShowAddFiles(true)}
-            className="flex items-center gap-1.5 text-sm text-grey hover:text-uq-purple"
-          >
-            <FilePlus size={16} strokeWidth={1.5} />
-            Add more files
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setZoom((z) => clamp(Number((z - ZOOM_STEP).toFixed(2)), ZOOM_MIN, ZOOM_MAX))}
-              aria-label="Zoom out"
-              className="text-grey hover:text-uq-purple"
-            >
-              <ZoomOut size={16} strokeWidth={1.5} />
-            </button>
-            <span className="w-10 text-center text-xs text-grey">{Math.round(zoom * 100)}%</span>
-            <button
-              type="button"
-              onClick={() => setZoom((z) => clamp(Number((z + ZOOM_STEP).toFixed(2)), ZOOM_MIN, ZOOM_MAX))}
-              aria-label="Zoom in"
-              className="text-grey hover:text-uq-purple"
-            >
-              <ZoomIn size={16} strokeWidth={1.5} />
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex items-center gap-2 bg-uq-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-          >
-            <Download size={16} strokeWidth={1.5} />
-            {isExporting ? "Exporting..." : "Export to PDF"}
-          </button>
-        </div>
-      </div>
+      <TopBar
+        courseCode={courseCode}
+        active="editor"
+        wordmark="CheatSheet Studio"
+        onSamplesClick={() => setShowSample(true)}
+        onExportClick={() => setShowExportPanel(true)}
+        isExporting={isExporting}
+      />
+      <FormattingToolbar disabled={sidebarMode === "compare"} selectedBlock={selectedBlock} />
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar courseCode={courseCode} />
-          <div
-            ref={sheetViewportRef}
-            onPointerDown={startViewportPan}
-            onPointerMove={moveViewportPan}
-            onPointerUp={stopViewportPan}
-            onPointerCancel={stopViewportPan}
-            onAuxClick={(e) => {
-              if (e.button === 1) e.preventDefault();
-            }}
-            className={`flex flex-1 flex-col items-center gap-8 overflow-auto bg-zinc-50 py-10 ${
-              isPanning ? "cursor-grabbing select-none" : ""
-            }`}
-          >
-            {Array.from({ length: pageCount }, (_, pageIndex) => (
-              <div
-                key={pageIndex}
-                style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
-              >
-                <PageFrame index={pageIndex} onBackgroundClick={() => setSelectedBlockId(null)}>
+          <Sidebar
+            mode={sidebarMode}
+            onModeChange={setSidebarMode}
+            onAddFiles={() => setShowAddFiles(true)}
+          />
+          {sidebarMode === "compare" ? (
+            <div className="flex flex-1 flex-col items-center overflow-auto bg-zinc-50 py-10">
+              <PageFrame index={0} blank onBackgroundClick={() => undefined}>
+                {null}
+              </PageFrame>
+            </div>
+          ) : (
+            <div
+              ref={sheetViewportRef}
+              onPointerDown={startViewportPan}
+              onPointerMove={moveViewportPan}
+              onPointerUp={stopViewportPan}
+              onPointerCancel={stopViewportPan}
+              onAuxClick={(e) => {
+                if (e.button === 1) e.preventDefault();
+              }}
+              className={`relative flex flex-1 flex-col items-center gap-8 overflow-auto bg-zinc-50 py-10 ${
+                isPanning ? "cursor-grabbing select-none" : ""
+              }`}
+            >
+              {Array.from({ length: pageCount }, (_, pageIndex) => (
+                <div
+                  key={pageIndex}
+                  style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
+                >
+                  <PageFrame index={pageIndex} onBackgroundClick={() => setSelectedBlockId(null)}>
+                    {blocks
+                      .filter((block) => block.pageIndex === pageIndex)
+                      .map((block) => (
+                        <Block
+                          key={block.id}
+                          block={block}
+                          isSelected={block.id === selectedBlockId}
+                          onSelect={() => setSelectedBlockId(block.id)}
+                          onChange={(patch, opts) => updateBlock(block.id, patch, opts)}
+                          onDelete={() => {
+                            removeBlock(block.id);
+                            setSelectedBlockId(null);
+                          }}
+                          zoom={zoom}
+                        />
+                      ))}
+                  </PageFrame>
+                </div>
+              ))}
+              <div className="sticky bottom-4 flex items-center gap-1 rounded-sm border border-grey-light bg-white px-2 py-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoom((z) => clamp(Number((z - ZOOM_STEP).toFixed(2)), ZOOM_MIN, ZOOM_MAX))
+                  }
+                  aria-label="Zoom out"
+                  className="text-grey hover:text-uq-purple"
+                >
+                  <ZoomOut size={16} strokeWidth={1.5} />
+                </button>
+                <span className="w-10 text-center text-xs tabular-nums text-grey">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setZoom((z) => clamp(Number((z + ZOOM_STEP).toFixed(2)), ZOOM_MIN, ZOOM_MAX))
+                  }
+                  aria-label="Zoom in"
+                  className="text-grey hover:text-uq-purple"
+                >
+                  <ZoomIn size={16} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Keep real pages mounted while Compare is showing so PDF export
+              can still find #cheat-sheet-page-N. */}
+          {sidebarMode === "compare" && (
+            <div className="pointer-events-none absolute -left-[10000px] top-0" aria-hidden>
+              {Array.from({ length: pageCount }, (_, pageIndex) => (
+                <PageFrame key={pageIndex} index={pageIndex} onBackgroundClick={() => undefined}>
                   {blocks
                     .filter((block) => block.pageIndex === pageIndex)
                     .map((block) => (
                       <Block
                         key={block.id}
                         block={block}
-                        isSelected={block.id === selectedBlockId}
-                        onSelect={() => setSelectedBlockId(block.id)}
-                        onChange={(patch) => updateBlock(block.id, patch)}
-                        onDelete={() => {
-                          removeBlock(block.id);
-                          setSelectedBlockId(null);
-                        }}
-                        zoom={zoom}
+                        isSelected={false}
+                        onSelect={() => undefined}
+                        onChange={() => undefined}
+                        onDelete={() => undefined}
                       />
                     ))}
                 </PageFrame>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <SuggestionsPanel />
         </div>
       </DndContext>
+
+      {showSample && (
+        <ViewSampleModal courseCode={courseCode} onClose={() => setShowSample(false)} />
+      )}
+
+      {showExportPanel && (
+        <ExportPanel
+          onClose={() => setShowExportPanel(false)}
+          onExport={handleExport}
+          isExporting={isExporting}
+        />
+      )}
 
       {showAddFiles && (
         <Modal title="Add more files" onClose={() => setShowAddFiles(false)}>

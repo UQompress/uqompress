@@ -22,3 +22,23 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+.text-block-editor[data-empty="true"]:not(:focus)::before {
+  content: "Type here";
+  color: var(--grey);
+  pointer-events: none;
+}
+
+.text-block-editor b,
+.text-block-editor strong {
+  font-weight: 700;
+}
+
+.text-block-editor i,
+.text-block-editor em {
+  font-style: italic;
+}
+
+.text-block-editor u {
+  text-decoration: underline;
+}

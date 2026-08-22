@@ -8,12 +8,17 @@ export function PageFrame({
   index,
   children,
   onBackgroundClick,
+  blank,
 }: {
   index: number;
   children: React.ReactNode;
   onBackgroundClick: () => void;
+  blank?: boolean;
 }) {
-  const { setNodeRef } = useDroppable({ id: `page-frame-${index}` });
+  const { setNodeRef } = useDroppable({
+    id: blank ? `compare-blank-${index}` : `page-frame-${index}`,
+    disabled: Boolean(blank),
+  });
   const orientation = useStudioStore((s) => s.orientation);
   const gridRows = useStudioStore((s) => s.gridRows);
   const gridCols = useStudioStore((s) => s.gridCols);
@@ -21,7 +26,7 @@ export function PageFrame({
 
   return (
     <div
-      id={`cheat-sheet-page-${index}`}
+      id={blank ? undefined : `cheat-sheet-page-${index}`}
       ref={setNodeRef}
       onClick={onBackgroundClick}
       style={{
@@ -30,7 +35,7 @@ export function PageFrame({
       }}
       className="relative shrink-0 border border-grey-light bg-white"
     >
-      {(gridRows > 1 || gridCols > 1) && (
+      {( !blank && (gridRows > 1 || gridCols > 1)) && (
         <div className="pointer-events-none absolute inset-0" data-cheat-sheet-grid-guide>
           {Array.from({ length: gridCols - 1 }, (_, i) => (
             <div
@@ -48,7 +53,7 @@ export function PageFrame({
           ))}
         </div>
       )}
-      {children}
+      {blank ? null : children}
     </div>
   );
 }

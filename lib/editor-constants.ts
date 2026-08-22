@@ -1,9 +1,74 @@
-import type { BlockType, CanvasBlock, Orientation } from "./types";
+import type { BlockType, CanvasBlock, Orientation, TextBlockKind } from "./types";
 
 export const GRID = 8;
 
 // Alignment snap threshold (px) against other blocks' edges/centers.
 export const ALIGN_SNAP_THRESHOLD = 6;
+
+// Print point sizes. The A4 canvas is sized in CSS px so that 1px = 1pt,
+// which keeps on-screen sizes identical to the exported PDF.
+export const FONT_SIZE_SCALE = [5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 14, 16, 18, 24];
+export const DEFAULT_FONT_SIZE = 12;
+export const MIN_FONT_SIZE = 4;
+export const MAX_FONT_SIZE = 72;
+export const TEXT_LINE_HEIGHT = 1.15;
+
+export const TEXT_KIND_DEFAULTS: Record<
+  TextBlockKind,
+  {
+    fontSize: number;
+    fontWeight: number;
+    color: string;
+    background: string;
+    textTransform: "uppercase" | "none";
+    padding: string;
+    indent: number;
+  }
+> = {
+  topic: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#ffffff",
+    background: "#51247a",
+    textTransform: "uppercase",
+    padding: "2px 4px",
+    indent: 0,
+  },
+  subtopic: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#171717",
+    background: "transparent",
+    textTransform: "uppercase",
+    padding: "0px 4px",
+    indent: 0,
+  },
+  body: {
+    fontSize: 12,
+    fontWeight: 400,
+    color: "#171717",
+    background: "transparent",
+    textTransform: "none",
+    padding: "0px 4px",
+    indent: 0,
+  },
+  subbody: {
+    fontSize: 11.5,
+    fontWeight: 400,
+    color: "#171717",
+    background: "transparent",
+    textTransform: "none",
+    padding: "0px 4px",
+    indent: 8,
+  },
+};
+
+export const TEXT_KIND_LABELS: Record<TextBlockKind, string> = {
+  topic: "Topic",
+  subtopic: "Subtopic",
+  body: "Body",
+  subbody: "Sub body",
+};
 
 const GRID_WIDTH_TYPES: BlockType[] = ["text", "table", "image", "divider"];
 
@@ -19,9 +84,10 @@ export const DEFAULT_CONTENT: Record<BlockType, string> = {
   cross: "",
 };
 
-// A4 proportions (210:297) scaled down to fit comfortably on screen.
-const PORTRAIT_WIDTH = 600;
-const PORTRAIT_HEIGHT = 849;
+// A4 in PostScript points (1pt = 1/72in). Rendering the page at this CSS
+// pixel size means font-size: Npx is Npt in the exported PDF.
+const PORTRAIT_WIDTH = 595;
+const PORTRAIT_HEIGHT = 842;
 
 export function getPageDimensions(orientation: Orientation): {
   width: number;
@@ -115,16 +181,32 @@ export function fitBlockToGridCell({
   return { x: nextX, y: nextY, width: nextWidth };
 }
 
+export function defaultTextBlockHeight(kind: TextBlockKind): number {
+  return kind === "topic" || kind === "subtopic" ? 24 : 40;
+}
+
+export function stepFontSize(current: number, direction: 1 | -1): number {
+  if (direction === 1) {
+    const next = FONT_SIZE_SCALE.find((size) => size > current + 0.001);
+    return next ?? Math.min(MAX_FONT_SIZE, current);
+  }
+  const prev = [...FONT_SIZE_SCALE].reverse().find((size) => size < current - 0.001);
+  return prev ?? Math.max(MIN_FONT_SIZE, current);
+}
+
+export function clampFontSize(value: number): number {
+  return clamp(value, MIN_FONT_SIZE, MAX_FONT_SIZE);
+}
+
 // Content dragged in from the AI Suggestion Bar is often much longer than a
 // blank "Text" block's default size — sizing it off the fixed DEFAULT_SIZE
-// clipped the content (TextContent uses overflow-hidden). Rough estimate:
-// ~30 characters per line at the default font size, one line = ~20px tall.
+// clipped the content. Rough estimate at 12pt body / ~28 chars per column.
 export function estimateTextBlockSize(content: string): { width: number; height: number } {
-  const CHARS_PER_LINE = 30;
-  const LINE_HEIGHT = 20;
+  const CHARS_PER_LINE = 28;
+  const LINE_HEIGHT = DEFAULT_FONT_SIZE * TEXT_LINE_HEIGHT;
   const WIDTH = 260;
   const estimatedLines = Math.max(1, Math.ceil(content.length / CHARS_PER_LINE));
-  const height = clamp(estimatedLines * LINE_HEIGHT + 20, 60, 400);
+  const height = clamp(estimatedLines * LINE_HEIGHT + 8, 16, 400);
   return { width: WIDTH, height };
 }
 

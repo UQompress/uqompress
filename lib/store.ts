@@ -7,9 +7,27 @@ import type {
   GeneratedContent,
   Orientation,
   QuestionnaireAnswer,
+  TextBlockKind,
   Topic,
 } from "./types";
-import { fitBlockToGridCell, getPageDimensions } from "./editor-constants";
+import {
+  DEFAULT_FONT_SIZE,
+  TEXT_KIND_DEFAULTS,
+  defaultTextBlockHeight,
+  fitBlockToGridCell,
+  getPageDimensions,
+} from "./editor-constants";
+
+const HISTORY_LIMIT = 10;
+
+type CanvasSnapshot = {
+  blocks: CanvasBlock[];
+  pageCount: number;
+};
+
+type BlockExtras = Partial<
+  Pick<CanvasBlock, "textKind" | "fontSize" | "textColor" | "manualLabelFormat" | "borderColor">
+>;
 
 type StudioState = {
   courseCode: string;
@@ -21,6 +39,9 @@ type StudioState = {
   orientation: Orientation;
   blocks: CanvasBlock[];
   pageCount: number;
+  activePageIndex: number;
+  past: CanvasSnapshot[];
+  future: CanvasSnapshot[];
 
   // AI Suggestion Bar drill-down state (topic -> question type -> content).
   selectedTopicId: string | null;
@@ -46,8 +67,10 @@ type StudioState = {
   setGeneratedContent: (questionTypeId: string, content: GeneratedContent) => void;
   appendGeneratedContent: (questionTypeId: string, content: GeneratedContent) => void;
   setGridSize: (rows: number, cols: number) => void;
+  setActivePageIndex: (index: number) => void;
   addPage: () => void;
-  addBlock: (type: BlockType, content: string) => void;
+  deletePage: (index: number) => void;
+  addBlock: (type: BlockType, content: string, extras?: BlockExtras) => void;
   addBlockAt: (
     type: BlockType,
     content: string,
@@ -55,15 +78,25 @@ type StudioState = {
     y: number,
     size?: { width: number; height: number },
     pageIndex?: number,
+    extras?: BlockExtras,
   ) => void;
-  updateBlock: (id: string, patch: Partial<CanvasBlock>) => void;
+  updateBlock: (
+    id: string,
+    patch: Partial<CanvasBlock>,
+    opts?: { transient?: boolean; coalesceKey?: string },
+  ) => void;
   removeBlock: (id: string) => void;
+  captureHistory: () => void;
+  undo: () => void;
+  redo: () => void;
 };
 
 let blockCounter = 0;
+let coalesce: { key: string; time: number } | null = null;
+const COALESCE_MS = 500;
 
 const DEFAULT_SIZE: Record<BlockType, { width: number; height: number }> = {
-  text: { width: 220, height: 90 },
+  text: { width: 220, height: 40 },
   table: { width: 260, height: 140 },
   image: { width: 200, height: 140 },
   divider: { width: 240, height: 12 },
@@ -75,7 +108,57 @@ const DEFAULT_SIZE: Record<BlockType, { width: number; height: number }> = {
 };
 // Falls back for a `type` that isn't a current BlockType — e.g. a stale
 // drag payload or dev-mode HMR module desync — instead of crashing.
-const FALLBACK_SIZE = { width: 220, height: 90 };
+const FALLBACK_SIZE = { width: 220, height: 32 };
+
+function cloneSnapshot(state: { blocks: CanvasBlock[]; pageCount: number }): CanvasSnapshot {
+  return {
+    blocks: structuredClone(state.blocks),
+    pageCount: state.pageCount,
+  };
+}
+
+function pushPast(state: StudioState, coalesceKey?: string): Pick<StudioState, "past" | "future"> {
+  const now = Date.now();
+  if (
+    coalesceKey &&
+    coalesce &&
+    coalesce.key === coalesceKey &&
+    now - coalesce.time < COALESCE_MS
+  ) {
+    coalesce.time = now;
+    return { past: state.past, future: [] };
+  }
+  coalesce = coalesceKey ? { key: coalesceKey, time: now } : null;
+  return {
+    past: [...state.past, cloneSnapshot(state)].slice(-HISTORY_LIMIT),
+    future: [],
+  };
+}
+
+function resolveTextDefaults(type: BlockType, extras?: BlockExtras): BlockExtras {
+  if (type !== "text") return extras ?? {};
+  const textKind: TextBlockKind = extras?.textKind ?? "body";
+  const kindDefaults = TEXT_KIND_DEFAULTS[textKind];
+  return {
+    textKind,
+    fontSize: extras?.fontSize ?? kindDefaults.fontSize ?? DEFAULT_FONT_SIZE,
+    textColor: extras?.textColor ?? kindDefaults.color,
+    manualLabelFormat: extras?.manualLabelFormat ?? false,
+    borderColor: extras?.borderColor,
+  };
+}
+
+function resolveSize(
+  type: BlockType,
+  extras?: BlockExtras,
+  size?: { width: number; height: number },
+): { width: number; height: number } {
+  if (size) return size;
+  const base = DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
+  if (type !== "text") return base;
+  const kind = extras?.textKind ?? "body";
+  return { width: base.width, height: defaultTextBlockHeight(kind) };
+}
 
 export const useStudioStore = create<StudioState>((set) => ({
   courseCode: "",
@@ -87,6 +170,9 @@ export const useStudioStore = create<StudioState>((set) => ({
   orientation: "portrait",
   blocks: [],
   pageCount: 1,
+  activePageIndex: 0,
+  past: [],
+  future: [],
 
   selectedTopicId: null,
   selectedQuestionTypeId: null,
@@ -117,6 +203,9 @@ export const useStudioStore = create<StudioState>((set) => ({
         orientation: "portrait",
         blocks: [],
         pageCount: 1,
+        activePageIndex: 0,
+        past: [],
+        future: [],
         selectedTopicId: null,
         selectedQuestionTypeId: null,
         questionnaireAnswers: {},
@@ -161,7 +250,7 @@ export const useStudioStore = create<StudioState>((set) => ({
             sampleExamples: [...existing.sampleExamples, ...content.sampleExamples],
             commonErrors: [...existing.commonErrors, ...content.commonErrors],
           }
-        : content;
+          : content;
       return { generatedContent: { ...state.generatedContent, [questionTypeId]: merged } };
     }),
 
@@ -190,13 +279,41 @@ export const useStudioStore = create<StudioState>((set) => ({
       };
     }),
 
-  addPage: () => set((state) => ({ pageCount: state.pageCount + 1 })),
+  setActivePageIndex: (index) =>
+    set((state) => ({
+      activePageIndex: Math.max(0, Math.min(index, state.pageCount - 1)),
+    })),
 
-  // Click-to-add from the sidebar has no page context, so it always targets
-  // page 0 (the first page always exists).
-  addBlock: (type, content) =>
+  addPage: () =>
+    set((state) => ({
+      ...pushPast(state),
+      pageCount: state.pageCount + 1,
+      activePageIndex: state.pageCount,
+    })),
+
+  deletePage: (index) =>
     set((state) => {
-      const size = DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
+      if (state.pageCount <= 1) return state;
+      const safeIndex = Math.max(0, Math.min(index, state.pageCount - 1));
+      const blocks = state.blocks
+        .filter((block) => block.pageIndex !== safeIndex)
+        .map((block) =>
+          block.pageIndex > safeIndex ? { ...block, pageIndex: block.pageIndex - 1 } : block,
+        );
+      const pageCount = state.pageCount - 1;
+      return {
+        ...pushPast(state),
+        blocks,
+        pageCount,
+        activePageIndex: Math.min(state.activePageIndex, pageCount - 1),
+      };
+    }),
+
+  // Click-to-add from the sidebar targets the active page.
+  addBlock: (type, content, extras) =>
+    set((state) => {
+      const resolved = resolveTextDefaults(type, extras);
+      const size = resolveSize(type, extras);
       const { width: pageWidth, height: pageHeight } = getPageDimensions(state.orientation);
       blockCounter += 1;
       const placement = fitBlockToGridCell({
@@ -213,19 +330,21 @@ export const useStudioStore = create<StudioState>((set) => ({
       const block: CanvasBlock = {
         id: `block-${Date.now()}-${blockCounter}`,
         type,
-        pageIndex: 0,
+        pageIndex: state.activePageIndex,
         x: placement.x,
         y: placement.y,
         width: placement.width,
         height: size.height,
         content,
+        ...resolved,
       };
-      return { blocks: [...state.blocks, block] };
+      return { ...pushPast(state), blocks: [...state.blocks, block] };
     }),
 
-  addBlockAt: (type, content, x, y, size, pageIndex = 0) =>
+  addBlockAt: (type, content, x, y, size, pageIndex, extras) =>
     set((state) => {
-      const resolvedSize = size ?? DEFAULT_SIZE[type] ?? FALLBACK_SIZE;
+      const resolved = resolveTextDefaults(type, extras);
+      const resolvedSize = resolveSize(type, extras, size);
       const { width: pageWidth, height: pageHeight } = getPageDimensions(state.orientation);
       const placement = fitBlockToGridCell({
         type,
@@ -242,21 +361,63 @@ export const useStudioStore = create<StudioState>((set) => ({
       const block: CanvasBlock = {
         id: `block-${Date.now()}-${blockCounter}`,
         type,
-        pageIndex,
+        pageIndex: pageIndex ?? state.activePageIndex,
         x: placement.x,
         y: placement.y,
         width: placement.width,
         height: resolvedSize.height,
         content,
+        ...resolved,
       };
-      return { blocks: [...state.blocks, block] };
+      return { ...pushPast(state), blocks: [...state.blocks, block] };
     }),
 
-  updateBlock: (id, patch) =>
-    set((state) => ({
-      blocks: state.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)),
-    })),
+  updateBlock: (id, patch, opts) =>
+    set((state) => {
+      const blocks = state.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b));
+      if (opts?.transient) return { blocks };
+      return {
+        ...pushPast(state, opts?.coalesceKey),
+        blocks,
+      };
+    }),
 
   removeBlock: (id) =>
-    set((state) => ({ blocks: state.blocks.filter((b) => b.id !== id) })),
+    set((state) => ({
+      ...pushPast(state),
+      blocks: state.blocks.filter((b) => b.id !== id),
+    })),
+
+  captureHistory: () =>
+    set((state) => ({
+      ...pushPast(state),
+    })),
+
+  undo: () =>
+    set((state) => {
+      if (state.past.length === 0) return state;
+      const previous = state.past[state.past.length - 1];
+      coalesce = null;
+      return {
+        blocks: previous.blocks,
+        pageCount: previous.pageCount,
+        activePageIndex: Math.min(state.activePageIndex, Math.max(0, previous.pageCount - 1)),
+        past: state.past.slice(0, -1),
+        future: [...state.future, cloneSnapshot(state)].slice(-HISTORY_LIMIT),
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.future.length === 0) return state;
+      const next = state.future[state.future.length - 1];
+      coalesce = null;
+      return {
+        blocks: next.blocks,
+        pageCount: next.pageCount,
+        activePageIndex: Math.min(state.activePageIndex, Math.max(0, next.pageCount - 1)),
+        future: state.future.slice(0, -1),
+        past: [...state.past, cloneSnapshot(state)].slice(-HISTORY_LIMIT),
+      };
+    }),
 }));

@@ -4,25 +4,24 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Circle, Highlighter, RotateCw, X } from "lucide-react";
-import type { BlockType, CanvasBlock } from "@/lib/types";
-import { clamp, snap } from "@/lib/editor-constants";
-import { escapeHtml } from "@/lib/html-safe-text";
+import { Check, Circle, RotateCw, X } from "lucide-react";
+import type { BlockType, CanvasBlock, TextBlockKind } from "@/lib/types";
+import {
+  DEFAULT_FONT_SIZE,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
+  TEXT_KIND_DEFAULTS,
+  TEXT_KIND_LABELS,
+  clamp,
+  snap,
+} from "@/lib/editor-constants";
+import { htmlToPlainText, applyLabelBeforeColon } from "@/lib/rich-text";
+import { TextBlockEditor } from "./TextBlockEditor";
+import { useStudioStore } from "@/lib/store";
 
 const MIN_WIDTH = 64;
-const MIN_HEIGHT = 24;
+const MIN_HEIGHT = 14;
 
-const TEXT_COLOR_OPTIONS = [
-  { label: "Black", value: "#171717" },
-  { label: "UQ purple", value: "#51247A" },
-  { label: "Red", value: "#dc2626" },
-  { label: "Blue", value: "#2563eb" },
-];
-const HIGHLIGHT_OPTIONS = [
-  { label: "None", value: "" },
-  { label: "Purple tint", value: "#F3EAFB" },
-  { label: "Yellow", value: "#FEF9C3" },
-];
 const BORDER_COLOR_OPTIONS = [
   { label: "Light", value: "#e5e5e5" },
   { label: "Dark", value: "#171717" },
@@ -37,13 +36,8 @@ const SHAPE_COLOR_OPTIONS = [
 ];
 const DEFAULT_BORDER_COLOR = "#e5e5e5";
 const SELECTED_BORDER_COLOR = "#51247A";
-const DEFAULT_FONT_SIZE = 14;
-const MIN_FONT_SIZE = 8;
-const MAX_FONT_SIZE = 48;
 
-const EDITABLE_TYPES: BlockType[] = ["text"];
 const CONTENT_LESS_TYPES: BlockType[] = ["divider", "line", "arrow", "tick", "circle", "cross"];
-const TEXT_COLORABLE_TYPES: BlockType[] = ["text"];
 const STROKE_ADJUSTABLE_TYPES: BlockType[] = ["line", "arrow"];
 const FONT_RESIZABLE_TYPES: BlockType[] = ["text"];
 const SHAPE_COLORABLE_TYPES: BlockType[] = ["line", "arrow", "tick", "circle", "cross"];
@@ -100,50 +94,6 @@ function ShapeContent({ block }: { block: CanvasBlock }) {
     default:
       return null;
   }
-}
-
-// Text block content is a small safe-HTML subset: plain (already-escaped)
-// text plus <mark> spans from per-word highlighting — see lib/html-safe-text.
-function TextContent({
-  content,
-  editing,
-  onCommit,
-  textColor,
-  fontSize,
-  contentRef,
-  isHighlighting,
-}: {
-  content: string;
-  editing: boolean;
-  onCommit: (value: string) => void;
-  textColor?: string;
-  fontSize?: number;
-  contentRef?: React.RefObject<HTMLDivElement | null>;
-  isHighlighting?: boolean;
-}) {
-  const textStyle = {
-    color: textColor,
-    fontSize: fontSize ?? DEFAULT_FONT_SIZE,
-  };
-  if (!editing) {
-    return (
-      <div
-        ref={contentRef}
-        className={`h-full w-full overflow-hidden whitespace-pre-wrap px-[6px] py-2 ${isHighlighting ? "cursor-text select-text" : ""}`}
-        style={textStyle}
-        dangerouslySetInnerHTML={{ __html: content || "Double-click to edit" }}
-      />
-    );
-  }
-  return (
-    <textarea
-      autoFocus
-      defaultValue={content}
-      onBlur={(e) => onCommit(e.target.value)}
-      style={textStyle}
-      className="h-full w-full resize-none px-[6px] py-2 outline-none"
-    />
-  );
 }
 
 function TableContent({
@@ -306,16 +256,13 @@ export function Block({
   block: CanvasBlock;
   isSelected: boolean;
   onSelect: () => void;
-  onChange: (patch: Partial<CanvasBlock>) => void;
+  onChange: (patch: Partial<CanvasBlock>, opts?: { transient?: boolean; coalesceKey?: string }) => void;
   onDelete: () => void;
   zoom?: number;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isHighlighting, setIsHighlighting] = useState(false);
-  const [pendingHighlightColor, setPendingHighlightColor] = useState<string>("#FEF9C3");
+  const captureHistory = useStudioStore((s) => s.captureHistory);
   const [overlayRect, setOverlayRect] = useState<DOMRect | null>(null);
   const nodeRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: block.id,
@@ -328,6 +275,8 @@ export function Block({
     });
 
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const isText = block.type === "text";
+  const dragListeners = isText && isSelected ? {} : listeners;
 
   function combinedRef(node: HTMLDivElement | null) {
     setNodeRef(node);
@@ -362,32 +311,6 @@ export function Block({
     };
   }, [isSelected, block.x, block.y, block.width, block.height, block.rotation, zoom]);
 
-  // Wraps the current text selection (if it's inside this block's content)
-  // in a <mark> — the actual "highlight a word, not the whole box" action.
-  // Uses the Selection/Range API directly rather than the deprecated
-  // document.execCommand('hiliteColor', ...), which is inconsistent cross-browser.
-  function applyHighlightToSelection() {
-    const selection = window.getSelection();
-    const el = contentRef.current;
-    if (selection && el && selection.rangeCount > 0 && !selection.isCollapsed) {
-      const range = selection.getRangeAt(0);
-      if (el.contains(range.commonAncestorContainer)) {
-        const mark = document.createElement("mark");
-        mark.style.backgroundColor = pendingHighlightColor;
-        try {
-          range.surroundContents(mark);
-        } catch {
-          const extracted = range.extractContents();
-          mark.appendChild(extracted);
-          range.insertNode(mark);
-        }
-        selection.removeAllRanges();
-        onChange({ content: el.innerHTML });
-      }
-    }
-    setIsHighlighting(false);
-  }
-
   function handleImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -399,9 +322,27 @@ export function Block({
     e.target.value = "";
   }
 
-  function startResize(e: React.PointerEvent) {
+  function changeTextKind(kind: TextBlockKind) {
+    const defaults = TEXT_KIND_DEFAULTS[kind];
+    const patch: Partial<CanvasBlock> = {
+      textKind: kind,
+      fontSize: defaults.fontSize,
+      textColor: defaults.color,
+    };
+    if ((kind === "body" || kind === "subbody") && !block.manualLabelFormat) {
+      patch.content = applyLabelBeforeColon(htmlToPlainText(block.content));
+    }
+    onChange(patch);
+  }
+
+  function startGeometryChange(e: React.PointerEvent) {
     e.stopPropagation();
     e.preventDefault();
+    captureHistory();
+  }
+
+  function startResize(e: React.PointerEvent) {
+    startGeometryChange(e);
     const startX = e.clientX;
     const startY = e.clientY;
     const startWidth = block.width;
@@ -418,7 +359,7 @@ export function Block({
         MIN_HEIGHT,
         2000,
       );
-      onChange({ width, height });
+      onChange({ width, height }, { transient: true });
     }
     function onUp() {
       window.removeEventListener("pointermove", onMove);
@@ -433,8 +374,7 @@ export function Block({
   // instead of the text overflowing a fixed box) — box-only resize is still
   // available separately via the edge-midpoint handles below.
   function startFontResize(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
+    startGeometryChange(e);
     const startY = e.clientY;
     const startFont = block.fontSize ?? DEFAULT_FONT_SIZE;
     const startWidth = block.width;
@@ -442,14 +382,14 @@ export function Block({
 
     function onMove(moveEvent: PointerEvent) {
       const fontSize = clamp(
-        Math.round(startFont + (moveEvent.clientY - startY) * 0.15),
+        Math.round((startFont + (moveEvent.clientY - startY) * 0.08) * 2) / 2,
         MIN_FONT_SIZE,
         MAX_FONT_SIZE,
       );
       const ratio = fontSize / startFont;
       const width = clamp(Math.round(startWidth * ratio), MIN_WIDTH, 2000);
       const height = clamp(Math.round(startHeight * ratio), MIN_HEIGHT, 2000);
-      onChange({ fontSize, width, height });
+      onChange({ fontSize, width, height }, { transient: true });
     }
     function onUp() {
       window.removeEventListener("pointermove", onMove);
@@ -460,8 +400,7 @@ export function Block({
   }
 
   function startEdgeResize(e: React.PointerEvent, axis: "width" | "height") {
-    e.stopPropagation();
-    e.preventDefault();
+    startGeometryChange(e);
     const startX = e.clientX;
     const startY = e.clientY;
     const startWidth = block.width;
@@ -469,9 +408,15 @@ export function Block({
 
     function onMove(moveEvent: PointerEvent) {
       if (axis === "width") {
-        onChange({ width: clamp(snap(startWidth + (moveEvent.clientX - startX)), MIN_WIDTH, 2000) });
+        onChange(
+          { width: clamp(snap(startWidth + (moveEvent.clientX - startX)), MIN_WIDTH, 2000) },
+          { transient: true },
+        );
       } else {
-        onChange({ height: clamp(snap(startHeight + (moveEvent.clientY - startY)), MIN_HEIGHT, 2000) });
+        onChange(
+          { height: clamp(snap(startHeight + (moveEvent.clientY - startY)), MIN_HEIGHT, 2000) },
+          { transient: true },
+        );
       }
     }
     function onUp() {
@@ -483,8 +428,7 @@ export function Block({
   }
 
   function startRotate(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
+    startGeometryChange(e);
     const rect = nodeRef.current?.getBoundingClientRect();
     if (!rect) return;
     const centerX = rect.left + rect.width / 2;
@@ -493,7 +437,7 @@ export function Block({
     function onMove(moveEvent: PointerEvent) {
       const angleRad = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
       const deg = Math.round((angleRad * (180 / Math.PI) + 90) / 5) * 5;
-      onChange({ rotation: deg });
+      onChange({ rotation: deg }, { transient: true });
     }
     function onUp() {
       window.removeEventListener("pointermove", onMove);
@@ -529,22 +473,21 @@ export function Block({
     commitTableRows(rows.map((row) => row.slice(0, -1)));
   }
 
-  const canEdit = EDITABLE_TYPES.includes(block.type);
   const isBoxed = !CONTENT_LESS_TYPES.includes(block.type);
-  const hasTextColorOptions = TEXT_COLORABLE_TYPES.includes(block.type);
   const hasShapeColorOptions = SHAPE_COLORABLE_TYPES.includes(block.type);
   const hasStrokeOptions = STROKE_ADJUSTABLE_TYPES.includes(block.type);
   const rotation = block.rotation ?? 0;
+  const isTopic = isText && block.textKind === "topic";
   const borderColor = isSelected
     ? SELECTED_BORDER_COLOR
-    : (block.borderColor ?? (isBoxed ? DEFAULT_BORDER_COLOR : "transparent"));
+    : (block.borderColor ?? (isBoxed && !isTopic ? DEFAULT_BORDER_COLOR : "transparent"));
 
-  const showToolbar = isSelected && (hasTextColorOptions || isBoxed || hasShapeColorOptions);
+  const showToolbar = isSelected && (isText || isBoxed || hasShapeColorOptions);
 
   return (
     <div
       ref={combinedRef}
-      {...(isEditing || isHighlighting ? {} : listeners)}
+      {...dragListeners}
       {...attributes}
       onClick={(e) => {
         e.stopPropagation();
@@ -554,11 +497,8 @@ export function Block({
         e.stopPropagation();
         if (block.type === "image") {
           imageInputRef.current?.click();
-        } else if (canEdit) {
-          setIsEditing(true);
         }
       }}
-      onMouseUp={isHighlighting ? applyHighlightToSelection : undefined}
       style={{
         position: "absolute",
         left: block.x,
@@ -566,24 +506,23 @@ export function Block({
         width: block.width,
         height: block.height,
         transform: `${CSS.Translate.toString(transform) ?? ""} rotate(${rotation}deg)`,
-        borderColor: isHighlighting ? pendingHighlightColor : borderColor,
+        borderColor,
+        background: isTopic ? TEXT_KIND_DEFAULTS.topic.background : undefined,
         zIndex: isDragging || isSelected ? 10 : 1,
       }}
-      className={`group border ${isBoxed ? "bg-white" : ""} ${isEditing ? "" : "cursor-grab"}`}
+      className={`group border ${isBoxed && !isTopic ? "bg-white" : ""} ${
+        isText && isSelected ? "cursor-text" : "cursor-grab"
+      }`}
     >
-      {block.type === "text" && (
-        <TextContent
-          content={block.content}
-          editing={isEditing}
-          textColor={block.textColor}
-          fontSize={block.fontSize}
-          contentRef={contentRef}
-          isHighlighting={isHighlighting}
-          onCommit={(value) => {
-            onChange({ content: escapeHtml(value) });
-            setIsEditing(false);
-          }}
+      {isText && isSelected && (
+        <div
+          {...listeners}
+          title="Drag to move"
+          className="absolute top-0 bottom-0 left-0 z-10 w-1.5 cursor-grab bg-uq-purple/40"
         />
+      )}
+      {block.type === "text" && (
+        <TextBlockEditor block={block} onChange={onChange} />
       )}
       {block.type === "table" && (
         <TableContent
@@ -621,54 +560,22 @@ export function Block({
                 }}
                 className="flex w-max max-w-xs flex-wrap items-center gap-3 border border-grey-light bg-white px-2 py-1 text-xs"
               >
-                {hasTextColorOptions && (
-                  <>
-                    <SwatchRow
-                      label="Text"
-                      options={TEXT_COLOR_OPTIONS}
-                      activeValue={block.textColor}
-                      fallbackDisplay={TEXT_COLOR_OPTIONS[0].value}
-                      onPick={(value) => onChange({ textColor: value })}
-                    />
-                    <ColorPickerInput value={block.textColor} onChange={(value) => onChange({ textColor: value })} />
-                    {isHighlighting ? (
-                      <span className="flex items-center gap-1 text-uq-purple">
-                        <Highlighter size={12} strokeWidth={1.5} />
-                        Select text to highlight
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsHighlighting(false);
-                          }}
-                          className="ml-1 underline"
-                        >
-                          Cancel
-                        </button>
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <span className="flex items-center gap-1 text-grey">
-                          <Highlighter size={12} strokeWidth={1.5} />
-                          Highlight
-                        </span>
-                        {HIGHLIGHT_OPTIONS.filter((opt) => opt.value).map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            title={`Highlight selection: ${opt.label}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPendingHighlightColor(opt.value);
-                              setIsHighlighting(true);
-                            }}
-                            style={{ backgroundColor: opt.value }}
-                            className="h-4 w-4 rounded-full border border-grey-light"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </>
+                {isText && (
+                  <label className="flex items-center gap-1 text-grey">
+                    Type
+                    <select
+                      value={block.textKind ?? "body"}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onChange={(e) => changeTextKind(e.target.value as TextBlockKind)}
+                      className="border border-grey-light bg-white px-1 py-0.5 text-xs text-foreground outline-none"
+                    >
+                      {(Object.keys(TEXT_KIND_LABELS) as TextBlockKind[]).map((kind) => (
+                        <option key={kind} value={kind}>
+                          {TEXT_KIND_LABELS[kind]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 )}
                 {isBoxed && (
                   <SwatchRow

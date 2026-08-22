@@ -6,7 +6,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { FrequencyChart } from "@/components/dashboard/FrequencyChart";
 import { useStudioStore } from "@/lib/store";
-import { escapeHtml } from "@/lib/html-safe-text";
+import { plainTextToBlockHtml } from "@/lib/rich-text";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -42,7 +42,9 @@ export default function DashboardPage() {
         body: JSON.stringify({ topic: selectedTopic }),
       });
       const data = (await res.json()) as { content?: string };
-      addBlock("text", escapeHtml(data.content ?? selectedTopic.name));
+      addBlock("text", plainTextToBlockHtml(data.content ?? selectedTopic.name, "body"), {
+        textKind: "body",
+      });
       setJustInserted(selectedTopic.id);
     } finally {
       setIsInserting(false);

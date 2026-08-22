@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Download } from "lucide-react";
 
 type Step = "setup" | "dashboard" | "editor";
 
@@ -15,21 +16,38 @@ const STEPS: { key: Step; label: string; href: string }[] = [
 export function TopBar({
   courseCode,
   active,
+  wordmark = "UQompress",
+  onSamplesClick,
+  onExportClick,
+  isExporting,
 }: {
   courseCode?: string;
   active: Step;
+  wordmark?: string;
+  onSamplesClick?: () => void;
+  onExportClick?: () => void;
+  isExporting?: boolean;
 }) {
   return (
     <header className="flex items-center justify-between border-b border-grey-light px-8 py-4">
       <div className="flex items-center gap-8">
         <Link href="/" className="text-sm font-semibold tracking-tight">
-          UQompress
+          {wordmark}
         </Link>
         {courseCode ? (
           <span className="text-sm text-grey">{courseCode}</span>
         ) : null}
       </div>
       <nav className="flex items-center gap-6">
+        {onSamplesClick ? (
+          <button
+            type="button"
+            onClick={onSamplesClick}
+            className="text-sm text-grey hover:text-foreground"
+          >
+            Samples
+          </button>
+        ) : null}
         {STEPS.map((step) => (
           <Link
             key={step.key}
@@ -43,6 +61,17 @@ export function TopBar({
             {step.label}
           </Link>
         ))}
+        {onExportClick ? (
+          <button
+            type="button"
+            onClick={onExportClick}
+            disabled={isExporting}
+            className="flex items-center gap-2 bg-uq-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            <Download size={16} strokeWidth={1.5} />
+            {isExporting ? "Exporting..." : "Export to PDF"}
+          </button>
+        ) : null}
       </nav>
     </header>
   );

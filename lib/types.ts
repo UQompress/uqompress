@@ -57,6 +57,8 @@ export type BlockType =
   | "circle"
   | "cross";
 
+export type TextBlockKind = "topic" | "subtopic" | "body" | "subbody";
+
 export type CanvasBlock = {
   id: string;
   type: BlockType;
@@ -66,12 +68,17 @@ export type CanvasBlock = {
   width: number;
   height: number;
   rotation?: number;
+  // Text blocks store a sanitised HTML subset (b/i/u/span/br). Other types
+  // keep plain text (table rows, image data URLs, empty shapes).
   content: string;
   fontSize?: number;
   textColor?: string;
   borderColor?: string;
   shapeColor?: string;
   strokeWidth?: number;
+  textKind?: TextBlockKind;
+  // When true, the label-before-colon auto-bold is skipped for this block.
+  manualLabelFormat?: boolean;
 };
 
 export type AnalysisStatus = "idle" | "loading" | "done" | "error";
