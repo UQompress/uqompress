@@ -332,3 +332,212 @@ Content generation failed SyntaxError: Bad escaped character in JSON at position
  GET /editor 200 in 18ms (next.js: 3ms, application-code: 16ms)
  GET /editor 200 in 16ms (next.js: 3ms, application-code: 14ms)
  POST /api/generate-content 200 in 11.2s (next.js: 4ms, application-code: 11.2s)
+ GET /editor 200 in 68ms (next.js: 6ms, application-code: 63ms)
+ GET / 200 in 119ms (next.js: 4ms, application-code: 115ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SegmentViewNode type="page" pagePath="editor/pag...">
+      <SegmentTrieNode>
+      <ClientPageRoot Component={function EditorPage} serverProvidedParams={{...}}>
+        <EditorPage params={Promise} searchParams={Promise}>
+          <div className="flex h-scr...">
+            <TopBar>
+            <div>
+            <DndContext sensors={[...]} onDragEnd={function handleDragEnd}>
+              <div className="flex flex-...">
+                <Sidebar courseCode="">
+                  <aside className="flex w-52 ...">
+                    <div>
+                    <button>
+                    <div>
+                      <h2>
+                      <div className="flex flex-...">
+                        <SidebarItem type="text" label="Text" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="table" label="Table" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="image" label="Image" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="divider" label="Divider" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                    <div>
+                      <h2>
+                      <div className="flex flex-...">
+                        <SidebarItem type="line" label="Straight line" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="arrow" label="Arrow" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="tick" label="Tick" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="circle" label="Circle" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="cross" label="Cross" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="bullet" label="Bullet point" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                ...
+              ...
+              ...
+ 
+ GET / 200 in 108ms (next.js: 8ms, application-code: 100ms)
+ GET / 200 in 70ms (next.js: 6ms, application-code: 64ms)
+ GET / 200 in 37ms (next.js: 3ms, application-code: 34ms)
+ GET / 200 in 34ms (next.js: 3ms, application-code: 31ms)
+ GET / 200 in 48ms (next.js: 3ms, application-code: 45ms)
+ GET / 200 in 57ms (next.js: 4ms, application-code: 52ms)
+ GET / 200 in 44ms (next.js: 3ms, application-code: 41ms)
+ GET / 200 in 59ms (next.js: 5ms, application-code: 54ms)
+ GET / 200 in 55ms (next.js: 4ms, application-code: 51ms)
+ GET / 200 in 41ms (next.js: 4ms, application-code: 38ms)
+ GET / 200 in 36ms (next.js: 2ms, application-code: 33ms)
