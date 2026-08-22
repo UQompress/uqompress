@@ -1,12 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import type { Topic } from "@/lib/types";
+import { ArrowLeft } from "lucide-react";
+import { useStudioStore } from "@/lib/store";
+import type { GeneratedContent, QuestionnaireAnswer, QuestionnaireQuestion } from "@/lib/types";
+import { Questionnaire } from "./Questionnaire";
 
-function SuggestionItem({ topic }: { topic: Topic }) {
+function DraggableContentItem({ id, content }: { id: string; content: string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `suggestion-${topic.id}`,
-    data: { source: "suggestion", topic },
+    id: `content-${id}`,
+    data: { source: "suggestion-content", content },
   });
 
   return (
@@ -16,25 +20,240 @@ function SuggestionItem({ topic }: { topic: Topic }) {
       {...attributes}
       className={`cursor-grab border border-grey-light px-3 py-2 text-sm hover:border-uq-purple ${isDragging ? "opacity-40" : ""}`}
     >
-      <p className="font-medium">{topic.name}</p>
-      <p className="mt-1 text-xs text-grey">Frequency {topic.frequencyScore}</p>
+      {content}
     </div>
   );
 }
 
-export function SuggestionsPanel({ topics }: { topics: Topic[] }) {
+function ContentSection({ title, items }: { title: string; items: string[] }) {
+  if (items.length === 0) return null;
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-2 border-l border-grey-light px-4 py-6">
-      <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">
-        AI suggestions
-      </h2>
-      {topics.length === 0 ? (
-        <p className="text-sm text-grey">
-          No analysis yet — run analysis from the setup page.
-        </p>
-      ) : (
-        topics.map((topic) => <SuggestionItem key={topic.id} topic={topic} />)
-      )}
+    <div className="flex flex-col gap-2">
+      <h3 className="text-xs uppercase tracking-wide text-grey">{title}</h3>
+      {items.map((item, i) => (
+        <DraggableContentItem key={i} id={`${title}-${i}`} content={item} />
+      ))}
+    </div>
+  );
+}
+
+export function SuggestionsPanel() {
+  const topics = useStudioStore((s) => s.topics);
+  const selectedTopicId = useStudioStore((s) => s.selectedTopicId);
+  const selectedQuestionTypeId = useStudioStore((s) => s.selectedQuestionTypeId);
+  const setSelectedTopicId = useStudioStore((s) => s.setSelectedTopicId);
+  const setSelectedQuestionTypeId = useStudioStore((s) => s.setSelectedQuestionTypeId);
+  const generatedContent = useStudioStore((s) => s.generatedContent);
+  const setGeneratedContentStore = useStudioStore((s) => s.setGeneratedContent);
+  const setQuestionnaireAnswersStore = useStudioStore((s) => s.setQuestionnaireAnswers);
+
+  const [questionnaire, setQuestionnaire] = useState<QuestionnaireQuestion[] | null>(null);
+  const [isGeneratingQuestionnaire, setIsGeneratingQuestionnaire] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedTopic = topics.find((t) => t.id === selectedTopicId) ?? null;
+  const selectedQuestionType =
+    selectedTopic?.questionTypes.find((qt) => qt.id === selectedQuestionTypeId) ?? null;
+  const cachedContent = selectedQuestionTypeId ? generatedContent[selectedQuestionTypeId] : undefined;
+
+  async function generateContent(answers?: QuestionnaireAnswer[]) {
+    if (!selectedTopic || !selectedQuestionType) return;
+    setIsGeneratingContent(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicName: selectedTopic.name,
+          questionTypeName: selectedQuestionType.name,
+          sourceExcerpt: selectedTopic.sourceExcerpt,
+          answers,
+        }),
+      });
+      const data = (await res.json()) as GeneratedContent & { error?: string };
+      if (data.error) throw new Error(data.error);
+      setGeneratedContentStore(selectedQuestionType.id, data);
+    } catch {
+      setError("Could not generate content for this question type.");
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  }
+
+  async function handleDoQuestionnaire() {
+    if (!selectedTopic || !selectedQuestionType) return;
+    setIsGeneratingQuestionnaire(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate-questionnaire", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicName: selectedTopic.name,
+          questionTypeName: selectedQuestionType.name,
+          sourceExcerpt: selectedTopic.sourceExcerpt,
+        }),
+      });
+      const data = (await res.json()) as { questions?: QuestionnaireQuestion[]; error?: string };
+      if (data.error || !data.questions) throw new Error(data.error ?? "Failed");
+      setQuestionnaire(data.questions);
+    } catch {
+      setError("Could not generate the questionnaire — try Skip instead.");
+    } finally {
+      setIsGeneratingQuestionnaire(false);
+    }
+  }
+
+  async function handleQuestionnaireSubmit(answers: QuestionnaireAnswer[]) {
+    if (!selectedQuestionType) return;
+    setQuestionnaireAnswersStore(selectedQuestionType.id, answers);
+    setQuestionnaire(null);
+    await generateContent(answers);
+  }
+
+  if (topics.length === 0) {
+    return (
+      <aside className="w-72 shrink-0 border-l border-grey-light px-4 py-6">
+        <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">AI suggestions</h2>
+        <p className="text-sm text-grey">No analysis yet — upload materials from Setup.</p>
+      </aside>
+    );
+  }
+
+  // Level 0: ranked topic list.
+  if (!selectedTopic) {
+    const ranked = [...topics].sort((a, b) => b.frequencyScore - a.frequencyScore);
+    return (
+      <aside className="flex w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-grey-light px-4 py-6">
+        <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">
+          Topic cluster — by exam frequency
+        </h2>
+        {ranked.map((topic, i) => (
+          <button
+            key={topic.id}
+            type="button"
+            onClick={() => setSelectedTopicId(topic.id)}
+            className="flex flex-col items-start border border-grey-light px-3 py-2 text-left text-sm hover:border-uq-purple"
+          >
+            <span className="font-medium">
+              {i + 1}. {topic.name}
+            </span>
+            <span className="text-xs text-grey">
+              {topic.questionCount} question{topic.questionCount === 1 ? "" : "s"} · {topic.frequencyScore}%
+            </span>
+          </button>
+        ))}
+      </aside>
+    );
+  }
+
+  // Level 1: question types within the selected topic.
+  if (!selectedQuestionType) {
+    return (
+      <aside className="flex w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-grey-light px-4 py-6">
+        <button
+          type="button"
+          onClick={() => setSelectedTopicId(null)}
+          className="flex items-center gap-1 text-xs text-grey hover:text-foreground"
+        >
+          <ArrowLeft size={12} strokeWidth={1.5} />
+          Topics
+        </button>
+        <h2 className="mt-1 text-sm font-medium">{selectedTopic.name}</h2>
+        <p className="mb-2 text-xs uppercase tracking-wide text-grey">Question types</p>
+        {selectedTopic.questionTypes.map((qt) => (
+          <button
+            key={qt.id}
+            type="button"
+            onClick={() => setSelectedQuestionTypeId(qt.id)}
+            className="flex flex-col items-start border border-grey-light px-3 py-2 text-left text-sm hover:border-uq-purple"
+          >
+            <span className="font-medium">{qt.name}</span>
+            <span className="text-xs text-grey">
+              {qt.questionCount} question{qt.questionCount === 1 ? "" : "s"}
+            </span>
+          </button>
+        ))}
+      </aside>
+    );
+  }
+
+  // Level 3: categorized draggable content, once generated.
+  if (cachedContent) {
+    return (
+      <aside className="flex w-72 shrink-0 flex-col gap-4 overflow-y-auto border-l border-grey-light px-4 py-6">
+        <button
+          type="button"
+          onClick={() => setSelectedQuestionTypeId(null)}
+          className="flex items-center gap-1 text-xs text-grey hover:text-foreground"
+        >
+          <ArrowLeft size={12} strokeWidth={1.5} />
+          Question types
+        </button>
+        <h2 className="text-sm font-medium">{selectedQuestionType.name}</h2>
+        <ContentSection title="Theory" items={cachedContent.theory} />
+        <ContentSection title="Sample examples" items={cachedContent.sampleExamples} />
+        <ContentSection title="Common errors" items={cachedContent.commonErrors} />
+      </aside>
+    );
+  }
+
+  // Level 2: questionnaire in progress.
+  if (questionnaire) {
+    return (
+      <aside className="flex w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-grey-light px-4 py-6">
+        <button
+          type="button"
+          onClick={() => setQuestionnaire(null)}
+          className="flex items-center gap-1 text-xs text-grey hover:text-foreground"
+        >
+          <ArrowLeft size={12} strokeWidth={1.5} />
+          Back
+        </button>
+        <Questionnaire
+          questions={questionnaire}
+          onSubmit={handleQuestionnaireSubmit}
+          onCancel={() => setQuestionnaire(null)}
+        />
+      </aside>
+    );
+  }
+
+  // Level 2: choice between questionnaire and skip.
+  return (
+    <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-grey-light px-4 py-6">
+      <button
+        type="button"
+        onClick={() => setSelectedQuestionTypeId(null)}
+        className="flex items-center gap-1 text-xs text-grey hover:text-foreground"
+      >
+        <ArrowLeft size={12} strokeWidth={1.5} />
+        Question types
+      </button>
+      <h2 className="text-sm font-medium">{selectedQuestionType.name}</h2>
+      <p className="text-sm text-grey">
+        Answer 5 quick questions so the suggestions match what you actually need, or skip
+        straight to AI-suggested content.
+      </p>
+      {error && <p className="text-xs text-red-700">{error}</p>}
+      <button
+        type="button"
+        onClick={handleDoQuestionnaire}
+        disabled={isGeneratingQuestionnaire || isGeneratingContent}
+        className="bg-uq-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+      >
+        {isGeneratingQuestionnaire ? "Preparing questionnaire..." : "Do questionnaire"}
+      </button>
+      <button
+        type="button"
+        onClick={() => generateContent(undefined)}
+        disabled={isGeneratingQuestionnaire || isGeneratingContent}
+        className="border border-grey-light px-4 py-2 text-sm hover:border-uq-purple disabled:opacity-40"
+      >
+        {isGeneratingContent ? "Generating..." : "Skip"}
+      </button>
     </aside>
   );
 }

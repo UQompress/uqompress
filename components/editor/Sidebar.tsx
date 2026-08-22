@@ -1,14 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { Minus, Image as ImageIcon, Table, Type } from "lucide-react";
+import {
+  Check,
+  Circle,
+  Eye,
+  List,
+  Minus,
+  MoveRight,
+  Image as ImageIcon,
+  PenLine,
+  Spline,
+  Table,
+  Type,
+  X,
+} from "lucide-react";
 import type { BlockType } from "@/lib/types";
+import { useStudioStore } from "@/lib/store";
+import { ViewSampleModal } from "./ViewSampleModal";
 
 const BLOCK_OPTIONS: { type: BlockType; label: string; icon: typeof Type }[] = [
   { type: "text", label: "Text", icon: Type },
   { type: "table", label: "Table", icon: Table },
   { type: "image", label: "Image", icon: ImageIcon },
   { type: "divider", label: "Divider", icon: Minus },
+];
+
+const DESIGN_ELEMENT_OPTIONS: { type: BlockType; label: string; icon: typeof Type }[] = [
+  { type: "line", label: "Straight line", icon: PenLine },
+  { type: "curve", label: "Curly line", icon: Spline },
+  { type: "arrow", label: "Arrow", icon: MoveRight },
+  { type: "tick", label: "Tick", icon: Check },
+  { type: "circle", label: "Circle", icon: Circle },
+  { type: "cross", label: "Cross", icon: X },
+  { type: "bullet", label: "Bullet point", icon: List },
 ];
 
 function SidebarItem({
@@ -39,13 +65,72 @@ function SidebarItem({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ courseCode }: { courseCode: string }) {
+  const gridRows = useStudioStore((s) => s.gridRows);
+  const gridCols = useStudioStore((s) => s.gridCols);
+  const setGridSize = useStudioStore((s) => s.setGridSize);
+  const [showSample, setShowSample] = useState(false);
+
   return (
-    <aside className="flex w-48 shrink-0 flex-col gap-2 border-r border-grey-light px-4 py-6">
-      <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">Blocks</h2>
-      {BLOCK_OPTIONS.map((option) => (
-        <SidebarItem key={option.type} {...option} />
-      ))}
+    <aside className="flex w-52 shrink-0 flex-col gap-6 overflow-y-auto border-r border-grey-light px-4 py-6">
+      <div>
+        <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">Layout grid</h2>
+        <div className="flex items-center gap-2">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-grey">
+            Rows
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={gridRows}
+              onChange={(e) => setGridSize(Number(e.target.value) || 1, gridCols)}
+              className="border border-grey-light px-2 py-1 text-sm outline-none focus:border-uq-purple"
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1 text-xs text-grey">
+            Columns
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={gridCols}
+              onChange={(e) => setGridSize(gridRows, Number(e.target.value) || 1)}
+              className="border border-grey-light px-2 py-1 text-sm outline-none focus:border-uq-purple"
+            />
+          </label>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowSample(true)}
+        className="flex items-center justify-center gap-2 border border-grey-light px-3 py-2 text-sm hover:border-uq-purple hover:text-uq-purple"
+      >
+        <Eye size={16} strokeWidth={1.5} />
+        View sample
+      </button>
+
+      <div>
+        <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">Blocks</h2>
+        <div className="flex flex-col gap-2">
+          {BLOCK_OPTIONS.map((option) => (
+            <SidebarItem key={option.type} {...option} />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">Design elements</h2>
+        <div className="flex flex-col gap-2">
+          {DESIGN_ELEMENT_OPTIONS.map((option) => (
+            <SidebarItem key={option.type} {...option} />
+          ))}
+        </div>
+      </div>
+
+      {showSample && (
+        <ViewSampleModal courseCode={courseCode} onClose={() => setShowSample(false)} />
+      )}
     </aside>
   );
 }

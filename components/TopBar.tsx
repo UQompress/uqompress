@@ -4,9 +4,11 @@ import Link from "next/link";
 
 type Step = "setup" | "dashboard" | "editor";
 
+// "dashboard" is intentionally left out of the primary nav — the AI
+// Suggestion Bar inside the editor replaced it as the main analysis surface.
+// The route (and this Step value) still exist for direct navigation.
 const STEPS: { key: Step; label: string; href: string }[] = [
   { key: "setup", label: "Setup", href: "/setup" },
-  { key: "dashboard", label: "Analysis", href: "/dashboard" },
   { key: "editor", label: "Editor", href: "/editor" },
 ];
 

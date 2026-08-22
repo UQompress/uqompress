@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FileText, Loader2, Upload, X } from "lucide-react";
+import { FileText, Loader2, RectangleHorizontal, RectangleVertical, Upload, X } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { useStudioStore } from "@/lib/store";
-import { MOCK_TOPICS } from "@/lib/mock-data";
-import type { ExtractedFile } from "@/lib/types";
+import { MOCK_TOPICS, MOCK_TOTAL_QUESTIONS } from "@/lib/mock-data";
+import type { ExtractedFile, Orientation, Topic } from "@/lib/types";
 
 export default function SetupPage() {
   const router = useRouter();
@@ -15,13 +15,15 @@ export default function SetupPage() {
   const setEcpText = useStudioStore((s) => s.setEcpText);
   const files = useStudioStore((s) => s.files);
   const setFiles = useStudioStore((s) => s.setFiles);
-  const setTopics = useStudioStore((s) => s.setTopics);
+  const setAnalysisResult = useStudioStore((s) => s.setAnalysisResult);
   const setAnalysisStatus = useStudioStore((s) => s.setAnalysisStatus);
+  const setOrientation = useStudioStore((s) => s.setOrientation);
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<"form" | "orientation">("form");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [ecpLookupStatus, setEcpLookupStatus] = useState<
@@ -109,11 +111,11 @@ export default function SetupPage() {
       const extracted = await extractPendingFiles();
 
       if (extracted.length === 0) {
-        // No materials uploaded — fall back to the mocked dashboard so the
-        // flow stays demoable without requiring real course PDFs.
-        setTopics(MOCK_TOPICS);
+        // No materials uploaded — fall back to mocked analysis so the flow
+        // stays demoable without requiring real course PDFs.
+        setAnalysisResult(MOCK_TOPICS, MOCK_TOTAL_QUESTIONS);
         setAnalysisStatus("done");
-        router.push("/dashboard");
+        setStep("orientation");
         return;
       }
 
@@ -125,10 +127,10 @@ export default function SetupPage() {
         body: JSON.stringify({ courseCode, ecpText, files: extracted }),
       });
       if (!res.ok) throw new Error("Analysis failed.");
-      const data = (await res.json()) as { topics: typeof MOCK_TOPICS };
-      setTopics(data.topics);
+      const data = (await res.json()) as { topics: Topic[]; totalQuestions: number };
+      setAnalysisResult(data.topics, data.totalQuestions);
       setAnalysisStatus("done");
-      router.push("/dashboard");
+      setStep("orientation");
     } catch (err) {
       setAnalysisStatus("error");
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -137,7 +139,46 @@ export default function SetupPage() {
     }
   }
 
+  function handleOrientationChoice(orientation: Orientation) {
+    setOrientation(orientation);
+    router.push("/editor");
+  }
+
   const busy = isExtracting || isAnalysing;
+
+  if (step === "orientation") {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <TopBar courseCode={courseCode} active="setup" />
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
+          <div className="text-center">
+            <h1 className="text-lg font-semibold">Page orientation</h1>
+            <p className="mt-1 text-sm text-grey">
+              Choose the shape of your physical cheat sheet page.
+            </p>
+          </div>
+          <div className="flex gap-6">
+            <button
+              type="button"
+              onClick={() => handleOrientationChoice("portrait")}
+              className="flex flex-col items-center gap-2 border border-grey-light px-6 py-6 text-sm hover:border-uq-purple hover:text-uq-purple"
+            >
+              <RectangleVertical size={40} strokeWidth={1.5} />
+              Portrait
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOrientationChoice("landscape")}
+              className="flex flex-col items-center gap-2 border border-grey-light px-6 py-6 text-sm hover:border-uq-purple hover:text-uq-purple"
+            >
+              <RectangleHorizontal size={40} strokeWidth={1.5} />
+              Landscape
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -193,14 +234,25 @@ export default function SetupPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Course materials</label>
+          <label className="text-sm font-medium">
+            Your materials{" "}
+            <span className="font-normal text-grey">
+              (whatever you personally want to study from and put on your cheat sheet)
+            </span>
+          </label>
+          <p className="text-xs text-grey">
+            Upload lecture slides, tutorial solutions, and past exams — your own choice of
+            what to learn from, not a fixed course curriculum. That keeps the analysis
+            current and matched to what you specifically need, rather than frozen to
+            whatever a pre-trained per-course model happened to be trained on.
+          </p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             className="flex flex-col items-center justify-center gap-2 border border-dashed border-grey-light px-4 py-10 text-sm text-grey hover:border-uq-purple hover:text-uq-purple"
           >
             <Upload size={20} strokeWidth={1.5} />
-            Upload past exam PDFs and lecture slides
+            Upload PDFs (lecture slides, tutorial solutions, past exams)
           </button>
           <input
             ref={inputRef}

@@ -3,14 +3,26 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
-import { X } from "lucide-react";
-import type { CanvasBlock } from "@/lib/types";
+import { Check, Circle, X } from "lucide-react";
+import type { BlockType, CanvasBlock } from "@/lib/types";
 import { clamp, snap } from "@/lib/editor-constants";
 
 const MIN_WIDTH = 64;
 const MIN_HEIGHT = 24;
 
-function TextContent({
+const TEXT_COLOR_OPTIONS = [
+  { label: "Black", value: "#171717" },
+  { label: "UQ purple", value: "#51247A" },
+];
+const HIGHLIGHT_OPTIONS = [
+  { label: "None", value: "" },
+  { label: "Purple tint", value: "#F3EAFB" },
+];
+
+const EDITABLE_TYPES: BlockType[] = ["text", "table", "image", "bullet"];
+const CONTENT_LESS_TYPES: BlockType[] = ["divider", "line", "curve", "arrow", "tick", "circle", "cross"];
+
+function BulletContent({
   content,
   editing,
   onCommit,
@@ -19,9 +31,89 @@ function TextContent({
   editing: boolean;
   onCommit: (value: string) => void;
 }) {
+  if (editing) {
+    return (
+      <textarea
+        autoFocus
+        defaultValue={content}
+        onBlur={(e) => onCommit(e.target.value)}
+        className="h-full w-full resize-none p-2 text-sm outline-none"
+      />
+    );
+  }
+  return (
+    <div className="flex h-full w-full items-start gap-1.5 overflow-hidden p-2 text-sm">
+      <span>•</span>
+      <span>{content || "Double-click to edit"}</span>
+    </div>
+  );
+}
+
+function ShapeContent({ type }: { type: BlockType }) {
+  switch (type) {
+    case "divider":
+      return <hr className="mt-3 border-t border-foreground" />;
+    case "line":
+      return (
+        <div className="flex h-full w-full items-center">
+          <div className="w-full border-t-2 border-foreground" />
+        </div>
+      );
+    case "curve":
+      return (
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+          <path d="M2,90 Q50,-10 98,90" fill="none" stroke="#171717" strokeWidth={3} />
+        </svg>
+      );
+    case "arrow":
+      return (
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="h-full w-full">
+          <line x1={4} y1={20} x2={82} y2={20} stroke="#171717" strokeWidth={3} />
+          <polygon points="80,10 98,20 80,30" fill="#171717" />
+        </svg>
+      );
+    case "tick":
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+          <Check size={24} strokeWidth={3} style={{ color: "#16a34a" }} />
+        </div>
+      );
+    case "circle":
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+          <Circle size={24} strokeWidth={3} style={{ color: "#dc2626" }} />
+        </div>
+      );
+    case "cross":
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+          <X size={24} strokeWidth={3} style={{ color: "#dc2626" }} />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
+function TextContent({
+  content,
+  editing,
+  onCommit,
+  textColor,
+  highlightColor,
+}: {
+  content: string;
+  editing: boolean;
+  onCommit: (value: string) => void;
+  textColor?: string;
+  highlightColor?: string;
+}) {
   if (!editing) {
     return (
-      <div className="h-full w-full overflow-hidden whitespace-pre-wrap p-2 text-sm">
+      <div
+        className="h-full w-full overflow-hidden whitespace-pre-wrap p-2 text-sm"
+        style={{ color: textColor, backgroundColor: highlightColor || undefined }}
+      >
         {content || "Double-click to edit"}
       </div>
     );
@@ -31,6 +123,7 @@ function TextContent({
       autoFocus
       defaultValue={content}
       onBlur={(e) => onCommit(e.target.value)}
+      style={{ color: textColor, backgroundColor: highlightColor || undefined }}
       className="h-full w-full resize-none p-2 text-sm outline-none"
     />
   );
@@ -157,7 +250,8 @@ export function Block({
     window.addEventListener("pointerup", onUp);
   }
 
-  const canEdit = block.type !== "divider";
+  const canEdit = EDITABLE_TYPES.includes(block.type);
+  const isBoxed = !CONTENT_LESS_TYPES.includes(block.type);
 
   return (
     <div
@@ -181,12 +275,14 @@ export function Block({
         transform: CSS.Translate.toString(transform),
         zIndex: isDragging || isSelected ? 10 : 1,
       }}
-      className={`group border ${isSelected ? "border-uq-purple" : "border-grey-light"} bg-white ${isEditing ? "" : "cursor-grab"}`}
+      className={`group border ${isSelected ? "border-uq-purple" : isBoxed ? "border-grey-light" : "border-transparent"} ${isBoxed ? "bg-white" : ""} ${isEditing ? "" : "cursor-grab"}`}
     >
       {block.type === "text" && (
         <TextContent
           content={block.content}
           editing={isEditing}
+          textColor={block.textColor}
+          highlightColor={block.highlightColor}
           onCommit={(value) => {
             onChange({ content: value });
             setIsEditing(false);
@@ -213,8 +309,49 @@ export function Block({
           }}
         />
       )}
-      {block.type === "divider" && (
-        <hr className="mt-3 border-t border-foreground" />
+      {block.type === "bullet" && (
+        <BulletContent
+          content={block.content}
+          editing={isEditing}
+          onCommit={(value) => {
+            onChange({ content: value });
+            setIsEditing(false);
+          }}
+        />
+      )}
+      {CONTENT_LESS_TYPES.includes(block.type) && <ShapeContent type={block.type} />}
+
+      {isSelected && block.type === "text" && (
+        <div className="absolute -top-9 left-0 flex items-center gap-2 bg-white px-2 py-1 text-xs shadow-none border border-grey-light">
+          <span className="text-grey">Text</span>
+          {TEXT_COLOR_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              title={opt.label}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange({ textColor: opt.value });
+              }}
+              style={{ backgroundColor: opt.value }}
+              className={`h-4 w-4 rounded-full border ${block.textColor === opt.value ? "border-2 border-black" : "border-grey-light"}`}
+            />
+          ))}
+          <span className="ml-2 text-grey">Highlight</span>
+          {HIGHLIGHT_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              title={opt.label}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange({ highlightColor: opt.value });
+              }}
+              style={{ backgroundColor: opt.value || "#ffffff" }}
+              className={`h-4 w-4 rounded-full border ${block.highlightColor === opt.value ? "border-2 border-black" : "border-grey-light"}`}
+            />
+          ))}
+        </div>
       )}
 
       {isSelected && (
