@@ -26,7 +26,16 @@ type CanvasSnapshot = {
 };
 
 type BlockExtras = Partial<
-  Pick<CanvasBlock, "textKind" | "fontSize" | "textColor" | "manualLabelFormat" | "borderColor">
+  Pick<
+    CanvasBlock,
+    | "textKind"
+    | "fontSize"
+    | "textColor"
+    | "manualLabelFormat"
+    | "borderColor"
+    | "shapeColor"
+    | "strokeWidth"
+  >
 >;
 
 type StudioState = {
@@ -53,6 +62,10 @@ type StudioState = {
   gridRows: number;
   gridCols: number;
 
+  annotationMode: boolean;
+  annotationColor: string;
+  annotationStrokeWidth: number;
+
   setCourseCode: (code: string) => void;
   startNewCourse: (code: string) => void;
   setEcpText: (text: string) => void;
@@ -66,6 +79,9 @@ type StudioState = {
   setQuestionnaireAnswers: (questionTypeId: string, answers: QuestionnaireAnswer[]) => void;
   setGeneratedContent: (questionTypeId: string, content: GeneratedContent) => void;
   appendGeneratedContent: (questionTypeId: string, content: GeneratedContent) => void;
+  setAnnotationMode: (on: boolean) => void;
+  setAnnotationColor: (color: string) => void;
+  setAnnotationStrokeWidth: (width: number) => void;
   setGridSize: (rows: number, cols: number) => void;
   setActivePageIndex: (index: number) => void;
   addPage: () => void;
@@ -105,6 +121,7 @@ const DEFAULT_SIZE: Record<BlockType, { width: number; height: number }> = {
   tick: { width: 32, height: 32 },
   circle: { width: 32, height: 32 },
   cross: { width: 32, height: 32 },
+  ink: { width: 40, height: 40 },
 };
 // Falls back for a `type` that isn't a current BlockType — e.g. a stale
 // drag payload or dev-mode HMR module desync — instead of crashing.
@@ -182,6 +199,10 @@ export const useStudioStore = create<StudioState>((set) => ({
   gridRows: 1,
   gridCols: 1,
 
+  annotationMode: false,
+  annotationColor: "#171717",
+  annotationStrokeWidth: 3,
+
   setCourseCode: (code) => set({ courseCode: code }),
 
   // Entering a course code on the landing page routes through here. If it's
@@ -212,6 +233,7 @@ export const useStudioStore = create<StudioState>((set) => ({
         generatedContent: {},
         gridRows: 1,
         gridCols: 1,
+        annotationMode: false,
       };
     }),
   setEcpText: (text) => set({ ecpText: text }),
@@ -254,6 +276,10 @@ export const useStudioStore = create<StudioState>((set) => ({
       return { generatedContent: { ...state.generatedContent, [questionTypeId]: merged } };
     }),
 
+  setAnnotationMode: (on) => set({ annotationMode: on }),
+  setAnnotationColor: (color) => set({ annotationColor: color }),
+  setAnnotationStrokeWidth: (width) => set({ annotationStrokeWidth: width }),
+
   setGridSize: (rows, cols) =>
     set((state) => {
       const gridRows = Math.max(1, rows);
@@ -262,20 +288,24 @@ export const useStudioStore = create<StudioState>((set) => ({
       return {
         gridRows,
         gridCols,
-        blocks: state.blocks.map((block) => ({
-          ...block,
-          ...fitBlockToGridCell({
-            type: block.type,
-            x: block.x,
-            y: block.y,
-            width: block.width,
-            height: block.height,
-            pageWidth,
-            pageHeight,
-            rows: gridRows,
-            cols: gridCols,
-          }),
-        })),
+        blocks: state.blocks.map((block) =>
+          block.type === "ink"
+            ? block
+            : {
+                ...block,
+                ...fitBlockToGridCell({
+                  type: block.type,
+                  x: block.x,
+                  y: block.y,
+                  width: block.width,
+                  height: block.height,
+                  pageWidth,
+                  pageHeight,
+                  rows: gridRows,
+                  cols: gridCols,
+                }),
+              },
+        ),
       };
     }),
 

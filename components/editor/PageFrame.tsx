@@ -1,6 +1,7 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
+import { InkDrawLayer } from "@/components/editor/InkDrawLayer";
 import { getPageDimensions } from "@/lib/editor-constants";
 import { useStudioStore } from "@/lib/store";
 
@@ -54,6 +55,7 @@ export function PageFrame({
         </div>
       )}
       {blank ? null : children}
+      {blank ? null : <InkDrawLayer pageIndex={index} />}
     </div>
   );
 }

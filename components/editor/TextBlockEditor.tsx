@@ -119,12 +119,12 @@ export function TextBlockEditor({
     if (!el) return;
     const shouldAutoLabel =
       (kind === "body" || kind === "subbody") && !block.manualLabelFormat;
-    if (shouldAutoLabel) {
+    if (!shouldAutoLabel) {
+      emit(sanitizeBlockHtml(el.innerHTML), { manualLabelFormat: true });
+    } else {
       const next = applyLabelBeforeColon(htmlToPlainText(el.innerHTML));
       el.innerHTML = next;
       emit(next);
-    } else {
-      emit(sanitizeBlockHtml(el.innerHTML), { manualLabelFormat: true });
     }
   }
 

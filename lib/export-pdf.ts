@@ -12,11 +12,13 @@ export async function exportPagesToPdf(
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  const guides = Array.from(
-    document.querySelectorAll<HTMLElement>("[data-cheat-sheet-grid-guide]"),
+  const hideWhileExporting = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      "[data-cheat-sheet-grid-guide], [data-ink-draw-layer]",
+    ),
   );
-  const previousDisplay = guides.map((el) => el.style.display);
-  for (const el of guides) el.style.display = "none";
+  const previousDisplay = hideWhileExporting.map((el) => el.style.display);
+  for (const el of hideWhileExporting) el.style.display = "none";
 
   try {
     let wrotePage = false;
@@ -35,7 +37,7 @@ export async function exportPagesToPdf(
       wrotePage = true;
     }
   } finally {
-    guides.forEach((el, i) => {
+    hideWhileExporting.forEach((el, i) => {
       el.style.display = previousDisplay[i];
     });
   }

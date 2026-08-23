@@ -45,7 +45,11 @@ export function PageThumbnail({
               width: Math.max(1, block.width * scale),
               height: Math.max(1, block.height * scale),
               background:
-                block.type === "text" && block.textKind === "topic" ? "#51247a" : "#d4d4d4",
+                block.type === "ink"
+                  ? (block.shapeColor ?? "#171717")
+                  : block.type === "text" && block.textKind === "topic"
+                    ? "#51247a"
+                    : "#d4d4d4",
             }}
           />
         ))}

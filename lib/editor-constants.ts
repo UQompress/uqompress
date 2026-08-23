@@ -82,6 +82,7 @@ export const DEFAULT_CONTENT: Record<BlockType, string> = {
   tick: "",
   circle: "",
   cross: "",
+  ink: "",
 };
 
 // A4 in PostScript points (1pt = 1/72in). Rendering the page at this CSS
@@ -153,6 +154,7 @@ export function fitBlockToGridCell({
   rows: number;
   cols: number;
 }): { x: number; y: number; width: number } {
+  if (type === "ink") return { x, y, width };
   const safeRows = Math.max(1, rows);
   const safeCols = Math.max(1, cols);
   const cellWidth = pageWidth / safeCols;
