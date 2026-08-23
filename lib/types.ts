@@ -1,6 +1,10 @@
 export type ExtractedFile = {
   name: string;
   text: string;
+  // Browser-local URL for reopening the original upload. It exists only for
+  // the current session and is never sent as the PDF contents to the server.
+  pdfUrl?: string;
+  sizeBytes?: number;
 };
 
 export type Orientation = "portrait" | "landscape";

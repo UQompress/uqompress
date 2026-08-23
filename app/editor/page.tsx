@@ -18,6 +18,7 @@ import { PageFrame } from "@/components/editor/PageFrame";
 import { Block } from "@/components/editor/Block";
 import { FormattingToolbar } from "@/components/editor/FormattingToolbar";
 import { ExportPanel } from "@/components/editor/ExportPanel";
+import { ViewMaterialsModal } from "@/components/editor/ViewMaterialsModal";
 import { ViewSampleModal } from "@/components/editor/ViewSampleModal";
 import { useStudioStore } from "@/lib/store";
 import {
@@ -32,6 +33,7 @@ import {
 } from "@/lib/editor-constants";
 import { plainTextToBlockHtml } from "@/lib/rich-text";
 import { exportPagesToPdf } from "@/lib/export-pdf";
+import { attachPdfUrls } from "@/lib/materials";
 import type { BlockType, ExtractedFile, TextBlockKind, Topic } from "@/lib/types";
 
 const ZOOM_MIN = 0.5;
@@ -61,6 +63,7 @@ export default function EditorPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [showExportPanel, setShowExportPanel] = useState(false);
   const [showSample, setShowSample] = useState(false);
+  const [showMaterials, setShowMaterials] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<"edit" | "compare">("edit");
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
@@ -279,13 +282,14 @@ export default function EditorPage() {
     if (!fileList || fileList.length === 0) return;
     setIsAddingFiles(true);
     try {
+      const uploads = Array.from(fileList);
       const formData = new FormData();
-      for (const file of Array.from(fileList)) formData.append("files", file);
+      for (const file of uploads) formData.append("files", file);
 
       const extractRes = await fetch("/api/extract-pdf", { method: "POST", body: formData });
       if (!extractRes.ok) throw new Error("Text extraction failed.");
       const extractData = (await extractRes.json()) as { files: ExtractedFile[] };
-      const mergedFiles = [...files, ...extractData.files];
+      const mergedFiles = [...files, ...attachPdfUrls(extractData.files, uploads)];
       setFiles(mergedFiles);
 
       // Re-run analysis against the full merged file set (not just the new
@@ -322,6 +326,7 @@ export default function EditorPage() {
         active="editor"
         wordmark="CheatSheet Studio"
         onSamplesClick={() => setShowSample(true)}
+        onMaterialsClick={() => setShowMaterials(true)}
         onExportClick={() => setShowExportPanel(true)}
         isExporting={isExporting}
       />
@@ -434,6 +439,10 @@ export default function EditorPage() {
 
       {showSample && (
         <ViewSampleModal courseCode={courseCode} onClose={() => setShowSample(false)} />
+      )}
+
+      {showMaterials && (
+        <ViewMaterialsModal files={files} onClose={() => setShowMaterials(false)} />
       )}
 
       {showExportPanel && (
