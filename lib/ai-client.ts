@@ -1,9 +1,7 @@
 import OpenAI from "openai";
-import { CLAUDE_MODEL, getAnthropicClient } from "./anthropic";
 
-// Claude (or Ungate below) is instructed to return JSON only, but this
-// strips fenced code blocks defensively in case it wraps the object in
-// ```json anyway.
+// Gemini is instructed to return JSON only, but this strips fenced code
+// blocks defensively in case it wraps the object in ```json anyway.
 export function extractJson<T>(rawText: string): T {
   const trimmed = rawText.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -89,30 +87,29 @@ export function stripLatex(text: string): string {
   return result;
 }
 
-let ungateClient: OpenAI | null = null;
+let geminiClient: OpenAI | null = null;
 
-export const UNGATE_SERVICE_TIER = "priority" as const;
+export const GEMINI_SERVICE_TIER = "priority" as const;
 
-function getUngateClient(): OpenAI | null {
+function getGeminiClient(): OpenAI | null {
   const baseURL = process.env.UNGATE_BASE_URL;
   const apiKey = process.env.UNGATE_API_KEY;
   if (!baseURL || !apiKey) return null;
-  if (!ungateClient) ungateClient = new OpenAI({ apiKey, baseURL });
-  return ungateClient;
+  if (!geminiClient) geminiClient = new OpenAI({ apiKey, baseURL });
+  return geminiClient;
 }
 
-// Ungate (a local gateway proxying your own ChatGPT/Claude/MiniMax provider
-// accounts) only registers /v1/chat/completions externally, not /v1/responses
-// — use client.chat.completions.create(), not client.responses.create().
-async function callUngate(prompt: string, maxTokens: number): Promise<string | null> {
-  const client = getUngateClient();
+// Gemini exposes an OpenAI-compatible Chat Completions endpoint at the
+// configured base URL, so the existing OpenAI SDK can be reused directly.
+async function callGemini(prompt: string, maxTokens: number): Promise<string | null> {
+  const client = getGeminiClient();
   if (!client) return null;
 
   const model = process.env.UNGATE_MODEL;
   if (!model) {
     throw new Error(
       "UNGATE_BASE_URL/UNGATE_API_KEY are set but UNGATE_MODEL is missing — " +
-        "call GET /v1/models against your Ungate instance and set UNGATE_MODEL to one of the returned IDs.",
+        "set UNGATE_MODEL to a Gemini model ID such as gemini-3.7-flash.",
     );
   }
 
@@ -121,39 +118,17 @@ async function callUngate(prompt: string, maxTokens: number): Promise<string | n
     messages: [{ role: "user", content: prompt }],
     max_tokens: maxTokens,
     reasoning_effort: "low",
-    // `priority` is the backward-compatible request value for Fast mode.
-    service_tier: UNGATE_SERVICE_TIER,
+    service_tier: GEMINI_SERVICE_TIER,
   });
 
   const text = response.choices[0]?.message?.content;
   if (typeof text !== "string") {
-    throw new Error("Unexpected response shape from Ungate.");
+    throw new Error("Unexpected response shape from Gemini.");
   }
   return text;
 }
 
-async function callAnthropic(prompt: string, maxTokens: number): Promise<string | null> {
-  const client = getAnthropicClient();
-  if (!client) return null;
-
-  const message = await client.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: maxTokens,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const textBlock = message.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from Anthropic.");
-  }
-  return textBlock.text;
-}
-
-// Tries Ungate first (if configured), then Anthropic, then signals the
-// caller to fall back to mock data.
+// Signals the caller to fall back to mock data when Gemini is not configured.
 export async function getCompletionText(prompt: string, maxTokens: number): Promise<string | null> {
-  const fromUngate = await callUngate(prompt, maxTokens);
-  if (fromUngate !== null) return fromUngate;
-
-  return callAnthropic(prompt, maxTokens);
+  return callGemini(prompt, maxTokens);
 }
