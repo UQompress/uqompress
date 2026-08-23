@@ -18,6 +18,7 @@ export function TopBar({
   active,
   wordmark = "UQompress",
   onSamplesClick,
+  onMaterialsClick,
   onExportClick,
   isExporting,
 }: {
@@ -25,6 +26,7 @@ export function TopBar({
   active: Step;
   wordmark?: string;
   onSamplesClick?: () => void;
+  onMaterialsClick?: () => void;
   onExportClick?: () => void;
   isExporting?: boolean;
 }) {
@@ -46,6 +48,15 @@ export function TopBar({
             className="text-sm text-grey hover:text-foreground"
           >
             Samples
+          </button>
+        ) : null}
+        {onMaterialsClick ? (
+          <button
+            type="button"
+            onClick={onMaterialsClick}
+            className="text-sm text-grey hover:text-foreground"
+          >
+            View materials
           </button>
         ) : null}
         {STEPS.map((step) => (

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2, RectangleHorizontal, RectangleVertical, Upload, X } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
+import { attachPdfUrls } from "@/lib/materials";
 import { useStudioStore } from "@/lib/store";
 import { MOCK_TOPICS, MOCK_TOTAL_QUESTIONS } from "@/lib/mock-data";
 import type { ExtractedFile, Orientation, Topic } from "@/lib/types";
@@ -87,8 +88,9 @@ export default function SetupPage() {
     setIsExtracting(true);
     setError(null);
     try {
+      const uploads = pendingFiles;
       const formData = new FormData();
-      for (const file of pendingFiles) formData.append("files", file);
+      for (const file of uploads) formData.append("files", file);
 
       const res = await fetch("/api/extract-pdf", {
         method: "POST",
@@ -96,7 +98,7 @@ export default function SetupPage() {
       });
       if (!res.ok) throw new Error("Text extraction failed.");
       const data = (await res.json()) as { files: ExtractedFile[] };
-      const merged = [...files, ...data.files];
+      const merged = [...files, ...attachPdfUrls(data.files, uploads)];
       setFiles(merged);
       setPendingFiles([]);
       return merged;
