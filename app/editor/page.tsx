@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
+import { AnalysingModal, isAbortError } from "@/components/AnalysingModal";
 import { TopBar } from "@/components/TopBar";
 import { Modal } from "@/components/Modal";
 import { Sidebar } from "@/components/editor/Sidebar";
@@ -75,6 +76,7 @@ export default function EditorPage() {
   const [isAddingFiles, setIsAddingFiles] = useState(false);
   const [addFilesError, setAddFilesError] = useState<string | null>(null);
   const addFilesInputRef = useRef<HTMLInputElement>(null);
+  const addFilesAbortRef = useRef<AbortController | null>(null);
   const sheetViewportRef = useRef<HTMLDivElement>(null);
   const panStateRef = useRef<{
     pointerId: number;
@@ -292,6 +294,8 @@ export default function EditorPage() {
 
   async function handleAddFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
+    const controller = new AbortController();
+    addFilesAbortRef.current = controller;
     setIsAddingFiles(true);
     setAddFilesError(null);
     try {
@@ -299,7 +303,11 @@ export default function EditorPage() {
       const formData = new FormData();
       for (const file of uploads) formData.append("files", file);
 
-      const extractRes = await fetch("/api/extract-pdf", { method: "POST", body: formData });
+      const extractRes = await fetch("/api/extract-pdf", {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
       if (!extractRes.ok) throw new Error("Text extraction failed.");
       const extractData = (await extractRes.json()) as { files: ExtractedFile[] };
       const mergedFiles = [...files, ...attachPdfUrls(extractData.files, uploads)];
@@ -312,15 +320,18 @@ export default function EditorPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ courseCode, ecpText, files: mergedFiles }),
+        signal: controller.signal,
       });
       if (!analyseRes.ok) throw new Error("Analysis failed.");
       const analyseData = (await analyseRes.json()) as {
         topics: Topic[];
         totalQuestions: number;
       };
+      if (controller.signal.aborted) return;
       mergeAnalysisResult(analyseData.topics, analyseData.totalQuestions);
       setShowAddFiles(false);
     } catch (err) {
+      if (isAbortError(err)) return;
       // Files were extracted and kept (setFiles above already ran) even if
       // analysis fails — only the topic re-analysis is what didn't complete,
       // so say so instead of silently leaving stale topics with no
@@ -329,8 +340,13 @@ export default function EditorPage() {
         err instanceof Error ? err.message : "Could not add these files — try again.",
       );
     } finally {
+      addFilesAbortRef.current = null;
       setIsAddingFiles(false);
     }
+  }
+
+  function handleCancelAddFilesAnalyse() {
+    addFilesAbortRef.current?.abort();
   }
 
   const selectedBlock = blocks.find((block) => block.id === selectedBlockId) ?? null;
@@ -340,7 +356,6 @@ export default function EditorPage() {
       <TopBar
         courseCode={courseCode}
         active="editor"
-        wordmark="CheatSheet Studio"
         onSamplesClick={() => setShowSample(true)}
         onMaterialsClick={() => setShowMaterials(true)}
         onExportClick={() => setShowExportPanel(true)}
@@ -496,6 +511,8 @@ export default function EditorPage() {
           </div>
         </Modal>
       )}
+
+      {isAddingFiles ? <AnalysingModal onCancel={handleCancelAddFilesAnalyse} /> : null}
 
       {showPublishPrompt && (
         <Modal title="Cheat sheet exported" onClose={() => setShowPublishPrompt(false)}>

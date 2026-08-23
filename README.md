@@ -12,7 +12,7 @@ UQCS 2026 Hackathon project.
 
 Most revision tools stop at summaries. UQompress is two products in one flow:
 
-1. **Learn from what you uploaded.** PDFs are extracted and analysed against the course profile (learning outcomes). You get ranked topics, question types, and short questionnaires so you can see gaps before you start laying out a page.
+1. **Learn from what you uploaded.** PDFs are extracted and analysed against the course profile (learning outcomes). You get ranked topics, question types, and short quizzes so you can see gaps before you start laying out a page.
 2. **Design the cheat sheet.** The editor is a Canva-style page: A4 portrait or landscape, grids, text styles, shapes, images, tables, and a pen for handwriting. AI suggestions sit in a side bar and drag onto the page. Export is a real PDF at print size.
 
 The sheet is meant to be printed and read under exam pressure. Generated content is written as tight reference cards (`Concept: the thing itself`), not tutor essays.
@@ -24,7 +24,7 @@ The sheet is meant to be printed and read under exam pressure. Generated content
 1. **Start with a course code** (for example `CSSE2010` or `INFS1200`).
 2. **Setup** — UQompress looks up learning outcomes from the public course profile. You upload PDFs (slides, past papers, solutions, notes). Analysis ranks topics by how often they appear in the material.
 3. **Choose page orientation** — portrait or landscape A4. That is the physical sheet you will print.
-4. **Editor (CheatSheet Studio)**
+4. **Editor**
    - Left: pages, layout grid, text kinds (topic / subtopic / body / sub-body), tables, images, and design marks (line, arrow, tick, circle, cross).
    - Centre: a real A4 canvas. Snap, align, resize, rotate, zoom.
    - Right: AI Suggestion Bar — pick a topic, optionally sit a short quiz, then generate *key theory*, *worked examples*, and *common errors*. Drag a card onto the page.
@@ -41,7 +41,7 @@ You can add more PDFs later; analysis re-runs on the full set. Uploaded files st
 - PDF text extraction
 - Automatic course-profile (ECP) learning-outcome lookup
 - Topic ranking with frequency and rationale
-- Per-topic questionnaires and results
+- Per-topic quizzes and results
 - Generated content grounded in the files you uploaded, with a sources list
 
 **Canva-style cheat-sheet studio**
@@ -66,7 +66,7 @@ The UI is a Next.js 16 App Router app (React 19, TypeScript, Tailwind CSS 4). Al
 
 ### Studio store
 
-`lib/store.ts` is the session. It holds the course code, extracted files, analysis topics, questionnaire answers, generated cards, page list, and every canvas block.
+`lib/store.ts` is the session. It holds the course code, extracted files, analysis topics, quiz answers, generated cards, page list, and every canvas block.
 
 Mutations that change the sheet (`addBlock`, `updateBlock`, `removeBlock`, page add/delete) push a snapshot of `{ blocks, pageCount }` onto a 10-step undo stack. Rapid edits to the same field (typing in a text block) coalesce so undo is per gesture, not per keystroke. Switching course code wipes course-scoped state so the previous sheet cannot leak through.
 
@@ -116,7 +116,7 @@ The dashboard route still exists, but the live analysis surface is the Suggestio
 
 ### QuickFill and handwritten → text (current work)
 
-**QuickFill** sits on top of the existing generate loop. Analysis already produces a ranked `Topic[]` with question types and `frequencyScore`. “Skip all” walks that list and calls `/api/generate-content` with no questionnaire. QuickFill will take those `GeneratedContent` fragments (theory / example / errors), run them through the same `plainTextToBlockHtml` + `estimateTextBlockSize` path used when a card is dragged, then `addBlockAt` into free cells of the current grid so the first page is a usable sheet, not an empty canvas. The hard part is packing: A4 point-space, label-before-colon cards of uneven height, and not covering the student’s later ink.
+**QuickFill** sits on top of the existing generate loop. Analysis already produces a ranked `Topic[]` with question types and `frequencyScore`. “Skip all” walks that list and calls `/api/generate-content` with no quiz. QuickFill will take those `GeneratedContent` fragments (theory / example / errors), run them through the same `plainTextToBlockHtml` + `estimateTextBlockSize` path used when a card is dragged, then `addBlockAt` into free cells of the current grid so the first page is a usable sheet, not an empty canvas. The hard part is packing: A4 point-space, label-before-colon cards of uneven height, and not covering the student’s later ink.
 
 **Handwritten → text** is a vision pass, not classical OCR. `/api/ocr` accepts a multipart image, base64-encodes it, and sends it to the same Chat Completions client with an `image_url` part and a “transcribe verbatim, Unicode math, `[illegible]` if unsure” prompt. The sidebar inserts the result as a sanitised text block. Extending this to canvas ink means rasterising the selected `ink` path (or a page snapshot) and reusing that route, so the student can sketch a formula and get a typed card without leaving the studio.
 

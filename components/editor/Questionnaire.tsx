@@ -3,17 +3,20 @@
 import { useState } from "react";
 import { Check, TriangleAlert, X } from "lucide-react";
 import type { QuestionnaireAnswer, QuestionnaireQuestion } from "@/lib/types";
+import type { QuizSharkMood } from "./QuizShark";
 
 export function Questionnaire({
   questions,
   onSubmit,
   onCancel,
   onSkip,
+  onMoodChange,
 }: {
   questions: QuestionnaireQuestion[];
   onSubmit: (answers: QuestionnaireAnswer[]) => void;
   onCancel: () => void;
   onSkip: () => void;
+  onMoodChange?: (mood: Exclude<QuizSharkMood, "complete">) => void;
 }) {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -30,6 +33,7 @@ export function Questionnaire({
   function selectOption(option: string) {
     if (isAnswered) return;
     setAnswers((prev) => ({ ...prev, [question.id]: option }));
+    onMoodChange?.(option === question.correctAnswer ? "correct" : "incorrect");
   }
 
   function handleNext() {
@@ -38,6 +42,7 @@ export function Questionnaire({
       return;
     }
     setIndex((i) => i + 1);
+    onMoodChange?.("neutral");
   }
 
   return (
@@ -118,7 +123,7 @@ export function Questionnaire({
             onClick={onSkip}
             className="border border-grey-light px-4 py-2 text-sm hover:border-uq-purple"
           >
-            Skip questionnaire
+            Skip quiz
           </button>
           <button
             type="button"

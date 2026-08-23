@@ -83,7 +83,7 @@ exactly like this:
     const parsed = extractJson<{ questions: QuestionnaireQuestion[] }>(text);
     return Response.json({ questions: shuffleOptions(sanitizeQuestions(parsed.questions)) });
   } catch (err) {
-    console.error("Questionnaire generation failed", err);
-    return Response.json({ error: "Questionnaire generation failed." }, { status: 502 });
+    console.error("Quiz generation failed", err);
+    return Response.json({ error: "Quiz generation failed." }, { status: 502 });
   }
 }

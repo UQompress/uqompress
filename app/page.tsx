@@ -1,9 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useStudioStore } from "@/lib/store";
+
+const HOW_IT_WORKS = [
+  "Choose course code",
+  "Upload course material",
+  "AI analyses and extracts info",
+  "Do quizzes with Sharky to learn",
+  "Build cheat sheet",
+];
 
 export default function Home() {
   const router = useRouter();
@@ -19,18 +28,37 @@ export default function Home() {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold tracking-tight text-center">
-          UQompress
-        </h1>
-        <p className="mt-2 text-center text-sm text-grey">
-          Build a page-constrained cheat sheet, backed by AI analysis of your
-          course&apos;s past papers.
-        </p>
+    <main className="flex h-dvh flex-1 flex-row overflow-hidden">
+      <section className="relative h-full w-1/2 overflow-hidden bg-uq-purple">
+        <Image
+          src="/landing-image.png"
+          alt="UQompress"
+          fill
+          priority
+          sizes="50vw"
+          className="object-cover"
+        />
+      </section>
 
-        <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-3">
+      <section className="flex w-1/2 flex-col justify-between bg-white px-10 py-12 md:px-14 md:py-16 lg:px-20 lg:py-20">
+        <div className="max-w-md">
+          <h2 className="text-2xl font-bold tracking-tight">How it works:</h2>
+          <ol className="mt-6 list-decimal space-y-2.5 pl-5 text-[15px] leading-relaxed">
+            {HOW_IT_WORKS.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="mt-14 flex w-full max-w-sm flex-col gap-3 md:mt-0"
+        >
+          <label htmlFor="course-code" className="text-sm font-medium">
+            Course code
+          </label>
           <input
+            id="course-code"
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
@@ -46,7 +74,7 @@ export default function Home() {
             <ArrowRight size={16} strokeWidth={1.5} />
           </button>
         </form>
-      </div>
+      </section>
     </main>
   );
 }

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2, RectangleHorizontal, RectangleVertical, Upload, X } from "lucide-react";
+import { AnalysingModal, isAbortError } from "@/components/AnalysingModal";
 import { TopBar } from "@/components/TopBar";
 import { attachPdfUrls } from "@/lib/materials";
 import { useStudioStore } from "@/lib/store";
@@ -26,6 +27,7 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "orientation">("form");
   const inputRef = useRef<HTMLInputElement>(null);
+  const analyseAbortRef = useRef<AbortController | null>(null);
 
   const [ecpLookupStatus, setEcpLookupStatus] = useState<
     "idle" | "loading" | "done" | "error"
@@ -83,7 +85,7 @@ export default function SetupPage() {
     setPendingFiles((prev) => prev.filter((f) => f.name !== name));
   }
 
-  async function extractPendingFiles(): Promise<ExtractedFile[]> {
+  async function extractPendingFiles(signal?: AbortSignal): Promise<ExtractedFile[]> {
     if (pendingFiles.length === 0) return files;
     setIsExtracting(true);
     setError(null);
@@ -95,6 +97,7 @@ export default function SetupPage() {
       const res = await fetch("/api/extract-pdf", {
         method: "POST",
         body: formData,
+        signal,
       });
       if (!res.ok) throw new Error("Text extraction failed.");
       const data = (await res.json()) as { files: ExtractedFile[] };
@@ -109,8 +112,11 @@ export default function SetupPage() {
 
   async function handleAnalyse() {
     setError(null);
+    const controller = new AbortController();
+    analyseAbortRef.current = controller;
     try {
-      const extracted = await extractPendingFiles();
+      const extracted = await extractPendingFiles(controller.signal);
+      if (controller.signal.aborted) return;
 
       if (extracted.length === 0) {
         // No materials uploaded — fall back to mocked analysis so the flow
@@ -127,18 +133,29 @@ export default function SetupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ courseCode, ecpText, files: extracted }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error("Analysis failed.");
       const data = (await res.json()) as { topics: Topic[]; totalQuestions: number };
+      if (controller.signal.aborted) return;
       setAnalysisResult(data.topics, data.totalQuestions);
       setAnalysisStatus("done");
       setStep("orientation");
     } catch (err) {
+      if (isAbortError(err)) {
+        setAnalysisStatus("idle");
+        return;
+      }
       setAnalysisStatus("error");
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
+      analyseAbortRef.current = null;
       setIsAnalysing(false);
     }
+  }
+
+  function handleCancelAnalyse() {
+    analyseAbortRef.current?.abort();
   }
 
   function handleOrientationChoice(orientation: Orientation) {
@@ -321,6 +338,7 @@ export default function SetupPage() {
               : "Analyse"}
         </button>
       </main>
+      {busy ? <AnalysingModal onCancel={handleCancelAnalyse} /> : null}
     </div>
   );
 }

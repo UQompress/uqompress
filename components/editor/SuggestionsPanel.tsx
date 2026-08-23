@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { ChevronDown } from "lucide-react";
 import { Modal } from "@/components/Modal";
@@ -14,6 +14,7 @@ import type {
 } from "@/lib/types";
 import { Questionnaire } from "./Questionnaire";
 import { QuestionnaireResults } from "./QuestionnaireResults";
+import { QuizShark, type QuizSharkMood } from "./QuizShark";
 
 function DraggableContentItem({ id, content }: { id: string; content: string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -117,6 +118,122 @@ function AccordionChevron({ open }: { open: boolean }) {
   );
 }
 
+const PANEL_MIN_WIDTH = 220;
+const PANEL_MAX_WIDTH = 560;
+const PANEL_DEFAULT_WIDTH = 288;
+const PANEL_WIDTH_STORAGE_KEY = "uqompress-suggestions-panel-width";
+
+function clampPanelWidth(width: number): number {
+  const viewportMax =
+    typeof window === "undefined" ? PANEL_MAX_WIDTH : window.innerWidth * 0.5;
+  return Math.min(Math.max(width, PANEL_MIN_WIDTH), Math.min(PANEL_MAX_WIDTH, viewportMax));
+}
+
+function readStoredPanelWidth(): number {
+  if (typeof window === "undefined") return PANEL_DEFAULT_WIDTH;
+  const stored = window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
+  const parsed = stored ? Number(stored) : NaN;
+  if (!Number.isFinite(parsed)) return PANEL_DEFAULT_WIDTH;
+  return clampPanelWidth(parsed);
+}
+
+function SuggestionsPanelShell({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const [width, setWidth] = useState(PANEL_DEFAULT_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  useEffect(() => {
+    setWidth(readStoredPanelWidth());
+  }, []);
+
+  useEffect(() => {
+    function onWindowResize() {
+      setWidth((current) => clampPanelWidth(current));
+    }
+    window.addEventListener("resize", onWindowResize);
+    return () => window.removeEventListener("resize", onWindowResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [isResizing]);
+
+  function startResize(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startWidth: width,
+    };
+    setIsResizing(true);
+  }
+
+  function moveResize(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    setWidth(clampPanelWidth(drag.startWidth + (drag.startX - e.clientX)));
+  }
+
+  function stopResize(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const next = clampPanelWidth(drag.startWidth + (drag.startX - e.clientX));
+    dragRef.current = null;
+    setIsResizing(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setWidth(next);
+    window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(next));
+  }
+
+  return (
+    <aside
+      className={`relative shrink-0 border-l border-grey-light ${className ?? ""}`}
+      style={{ width }}
+    >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize suggestions panel"
+        aria-valuenow={Math.round(width)}
+        aria-valuemin={PANEL_MIN_WIDTH}
+        aria-valuemax={PANEL_MAX_WIDTH}
+        onPointerDown={startResize}
+        onPointerMove={moveResize}
+        onPointerUp={stopResize}
+        onPointerCancel={stopResize}
+        className={`absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize touch-none ${
+          isResizing ? "bg-uq-purple/40" : "hover:bg-uq-purple/25"
+        }`}
+      />
+      {children}
+    </aside>
+  );
+}
+
 export function SuggestionsPanel() {
   const topics = useStudioStore((s) => s.topics);
   const files = useStudioStore((s) => s.files);
@@ -133,6 +250,7 @@ export function SuggestionsPanel() {
   } | null>(null);
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireQuestion[] | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<QuestionnaireAnswer[] | null>(null);
+  const [quizMood, setQuizMood] = useState<QuizSharkMood>("neutral");
   const [generatingQuestionnaireId, setGeneratingQuestionnaireId] = useState<string | null>(null);
   const [generatingContentIds, setGeneratingContentIds] = useState<Set<string>>(new Set());
   const [loadingMoreId, setLoadingMoreId] = useState<string | null>(null);
@@ -269,11 +387,13 @@ export function SuggestionsPanel() {
       });
       const data = (await res.json()) as { questions?: QuestionnaireQuestion[]; error?: string };
       if (data.error || !data.questions) throw new Error(data.error ?? "Failed");
+      setQuizMood("neutral");
+      setQuizAnswers(null);
       setQuestionnaire(data.questions);
     } catch {
       setError({
         questionTypeId: questionType.id,
-        message: "Could not generate the questionnaire — try Skip instead.",
+        message: "Could not generate the quiz — try Skip instead.",
       });
     } finally {
       setGeneratingQuestionnaireId(null);
@@ -292,12 +412,14 @@ export function SuggestionsPanel() {
     const target = resolvePendingTarget();
     if (!target) return;
     setQuestionnaireAnswersStore(target.questionType.id, answers);
+    setQuizMood("complete");
     setQuizAnswers(answers);
   }
 
   function closeQuestionnaireModal() {
     setQuestionnaire(null);
     setQuizAnswers(null);
+    setQuizMood("neutral");
   }
 
   async function handleResultsContinue() {
@@ -325,9 +447,10 @@ export function SuggestionsPanel() {
 
   const questionnaireModal = questionnaire && (
     <Modal
-      title={quizAnswers ? "Your results" : "Quick questionnaire"}
+      title={quizAnswers ? "Your results" : "Quick quiz"}
       onClose={closeQuestionnaireModal}
       size="lg"
+      aside={<QuizShark mood={quizAnswers ? "complete" : quizMood} />}
     >
       {quizAnswers ? (
         <QuestionnaireResults
@@ -344,6 +467,7 @@ export function SuggestionsPanel() {
           onSubmit={handleQuestionnaireSubmit}
           onCancel={closeQuestionnaireModal}
           onSkip={handleQuestionnaireSkip}
+          onMoodChange={(mood) => setQuizMood(mood)}
         />
       )}
     </Modal>
@@ -351,16 +475,16 @@ export function SuggestionsPanel() {
 
   if (topics.length === 0) {
     return (
-      <aside className="w-72 shrink-0 border-l border-grey-light px-4 py-6">
+      <SuggestionsPanelShell className="px-4 py-6">
         <h2 className="mb-2 text-xs uppercase tracking-wide text-grey">AI suggestions</h2>
         <p className="text-sm text-grey">No analysis yet — upload materials from Setup.</p>
-      </aside>
+      </SuggestionsPanelShell>
     );
   }
 
   return (
     <>
-      <aside className="flex w-72 shrink-0 flex-col gap-2 overflow-y-auto border-l border-grey-light px-4 py-6">
+      <SuggestionsPanelShell className="flex flex-col gap-2 overflow-y-auto px-4 py-6">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-xs uppercase tracking-wide text-grey">
             Topic cluster — by exam frequency
@@ -370,7 +494,7 @@ export function SuggestionsPanel() {
               type="button"
               onClick={handleSkipAll}
               disabled={skippingAll}
-              title="Generate content for every question type across all topics, skipping questionnaires"
+              title="Generate content for every question type across all topics, skipping quizzes"
               className="shrink-0 border border-grey-light px-2 py-0.5 text-xs text-grey hover:border-uq-purple hover:text-uq-purple disabled:opacity-40"
             >
               {skippingAll ? "..." : "Skip all"}
@@ -418,10 +542,10 @@ export function SuggestionsPanel() {
                           type="button"
                           aria-expanded={qtOpen}
                           onClick={() => toggleSet(setOpenQuestionTypeIds, questionType.id)}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:text-uq-purple"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left hover:text-uq-purple"
                         >
                           <span className="min-w-0 flex-1">
-                            <span className="block font-medium">{questionType.name}</span>
+                            <span className="block text-xs font-medium">{questionType.name}</span>
                             <span className="text-xs text-grey">
                               {questionType.questionCount} question
                               {questionType.questionCount === 1 ? "" : "s"}
@@ -471,7 +595,7 @@ export function SuggestionsPanel() {
                             ) : (
                               <>
                                 <p className="text-xs text-grey">
-                                  Answer a short questionnaire so suggestions match what you need,
+                                  Answer a short quiz so suggestions match what you need,
                                   or skip straight to AI content.
                                 </p>
                                 {qtError && <p className="text-xs text-red-700">{qtError}</p>}
@@ -482,8 +606,8 @@ export function SuggestionsPanel() {
                                   className="bg-uq-purple px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
                                 >
                                   {isPreparingQuiz
-                                    ? "Preparing questionnaire..."
-                                    : "Do questionnaire"}
+                                    ? "Preparing quiz..."
+                                    : "Do quiz"}
                                 </button>
                                 <button
                                   type="button"
@@ -491,7 +615,7 @@ export function SuggestionsPanel() {
                                   disabled={busy}
                                   className="border border-grey-light px-3 py-1.5 text-sm hover:border-uq-purple disabled:opacity-40"
                                 >
-                                  {isGenerating ? "Generating..." : "Skip questionnaire"}
+                                  {isGenerating ? "Generating..." : "Skip quiz"}
                                 </button>
                               </>
                             )}
@@ -505,7 +629,7 @@ export function SuggestionsPanel() {
             </div>
           );
         })}
-      </aside>
+      </SuggestionsPanelShell>
       {questionnaireModal}
       {sourcesContent && sourcesQuestionTypeId && (
         <Modal title="Sources" onClose={() => setSourcesQuestionTypeId(null)}>

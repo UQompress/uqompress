@@ -12,7 +12,7 @@ rather than substituting.
 
 ## 1. TOP NAVBAR
 
-Left: "CheatSheet Studio" wordmark, then course code (INFS1200).
+Left: "UQompress" wordmark, then course code (INFS1200).
 Right: Samples | Setup | Editor | [Export to PDF button, purple, download icon]
 
 "Samples" replaces the old "View sample" button that lived in the left sidebar — remove it

@@ -33,7 +33,7 @@ export function TopBar({
   return (
     <header className="flex items-center justify-between border-b border-grey-light px-8 py-4">
       <div className="flex items-center gap-8">
-        <Link href="/" className="text-sm font-semibold tracking-tight">
+        <Link href="/" className="font-brand text-sm font-semibold tracking-tight">
           {wordmark}
         </Link>
         {courseCode ? (

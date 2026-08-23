@@ -31,10 +31,10 @@ export async function POST(request: Request) {
 
   const answersBlock =
     answers && answers.length > 0
-      ? `The student answered a diagnostic questionnaire about this question type:\n${answers
+      ? `The student answered a diagnostic quiz about this question type:\n${answers
           .map((a) => `- ${a.questionId}: "${a.answer}"`)
           .join("\n")}\nUse these answers to bias "commonErrors" toward the mistakes their answers suggest they're prone to.`
-      : "The student skipped the diagnostic questionnaire — infer common errors from the source material alone.";
+      : "The student skipped the diagnostic quiz — infer common errors from the source material alone.";
 
   const citationSources =
     sourceFileNames && sourceFileNames.length > 0

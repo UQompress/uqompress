@@ -15,6 +15,8 @@
   --color-grey-light: var(--grey-light);
   --color-uq-purple: var(--uq-purple);
   --font-sans: var(--font-inter);
+  --font-brand: var(--font-kodchasan), var(--font-inter), system-ui, sans-serif;
+  --font-hand: var(--font-caveat), "Segoe Script", cursive;
 }
 
 body {
@@ -41,4 +43,31 @@ body {
 
 .text-block-editor u {
   text-decoration: underline;
+}
+
+@keyframes quiz-confetti-fall {
+  0% {
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(var(--wobble), 28vh, 0) rotate(90deg);
+  }
+  50% {
+    transform: translate3d(calc(var(--wobble) * -1), 58vh, 0) rotate(180deg);
+  }
+  75% {
+    transform: translate3d(var(--wobble), 84vh, 0) rotate(270deg);
+  }
+  100% {
+    transform: translate3d(0, 110vh, 0) rotate(360deg);
+    opacity: 1;
+  }
+}
+
+.quiz-confetti-piece {
+  border-radius: 1px;
+  animation-name: quiz-confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }

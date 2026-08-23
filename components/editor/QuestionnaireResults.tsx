@@ -1,6 +1,7 @@
 "use client";
 
 import type { QuestionnaireAnswer, QuestionnaireQuestion } from "@/lib/types";
+import { QuizConfetti } from "./QuizConfetti";
 
 export function QuestionnaireResults({
   questions,
@@ -26,6 +27,7 @@ export function QuestionnaireResults({
 
   return (
     <div className="flex flex-col gap-5">
+      <QuizConfetti />
       <div>
         <div className="flex items-baseline justify-between">
           <h3 className="text-sm font-medium">Your score</h3>
