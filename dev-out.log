@@ -3100,3 +3100,22 @@ Analysis failed SyntaxError: Unterminated string in JSON at position 3539 (line 
  GET /editor 200 in 35ms (next.js: 11ms, application-code: 24ms)
  GET /editor 200 in 37ms (next.js: 11ms, application-code: 26ms)
  POST /api/analyse 200 in 1292ms (next.js: 7ms, application-code: 1285ms)
+ GET / 200 in 79ms (next.js: 7ms, application-code: 72ms)
+ GET / 200 in 57ms (next.js: 5ms, application-code: 51ms)
+ GET /setup 200 in 31ms (next.js: 9ms, application-code: 22ms)
+ POST /api/lookup-ecp 200 in 263ms (next.js: 5ms, application-code: 258ms)
+ POST /api/extract-pdf 200 in 1521ms (next.js: 5ms, application-code: 1517ms)
+Analysis failed SyntaxError: Unterminated string in JSON at position 1803 (line 52 column 21)
+    at JSON.parse (<anonymous>)
+    at extractJson (lib\ai-client.ts:16:17)
+    at POST (app\api\analyse\route.ts:77:31)
+  14 |     // isn't already part of a valid JSON escape sequence, then retry once.
+  15 |     const sanitized = jsonText.replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
+> 16 |     return JSON.parse(sanitized) as T;
+     |                 ^
+  17 |   }
+  18 | }
+  19 |
+ POST /api/analyse 502 in 11.7s (next.js: 14ms, application-code: 11.7s)
+ POST /api/analyse 200 in 3.9s (next.js: 4ms, application-code: 3.9s)
+ GET /editor 200 in 51ms (next.js: 6ms, application-code: 45ms)
