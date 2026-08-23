@@ -80,8 +80,7 @@ sum of every topic's questionCount must equal totalQuestions.`;
       topics: withFrequencyScores(parsed.topics, parsed.totalQuestions),
     });
   } catch (err) {
-    // TEMP: bypass analysis failure — AI/server off; return mock data instead of 502.
     console.error("Analysis failed", err);
-    return Response.json({ topics: MOCK_TOPICS, totalQuestions: MOCK_TOTAL_QUESTIONS });
+    return Response.json({ error: "Analysis failed." }, { status: 502 });
   }
 }

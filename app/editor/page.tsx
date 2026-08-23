@@ -71,6 +71,7 @@ export default function EditorPage() {
   const [showPublishPrompt, setShowPublishPrompt] = useState(false);
   const [publishAcknowledged, setPublishAcknowledged] = useState(false);
   const [isAddingFiles, setIsAddingFiles] = useState(false);
+  const [addFilesError, setAddFilesError] = useState<string | null>(null);
   const addFilesInputRef = useRef<HTMLInputElement>(null);
   const sheetViewportRef = useRef<HTMLDivElement>(null);
   const panStateRef = useRef<{
@@ -281,6 +282,7 @@ export default function EditorPage() {
   async function handleAddFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
     setIsAddingFiles(true);
+    setAddFilesError(null);
     try {
       const uploads = Array.from(fileList);
       const formData = new FormData();
@@ -295,23 +297,26 @@ export default function EditorPage() {
       // Re-run analysis against the full merged file set (not just the new
       // files) so topic/question counts stay consistent across the whole
       // corpus, then replace the previous analysis with this refreshed one.
-      try {
-        const analyseRes = await fetch("/api/analyse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseCode, ecpText, files: mergedFiles }),
-        });
-        if (analyseRes.ok) {
-          const analyseData = (await analyseRes.json()) as {
-            topics: Topic[];
-            totalQuestions: number;
-          };
-          mergeAnalysisResult(analyseData.topics, analyseData.totalQuestions);
-        }
-      } catch {
-        // TEMP: bypass analysis failure — keep existing topics and continue.
-      }
+      const analyseRes = await fetch("/api/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseCode, ecpText, files: mergedFiles }),
+      });
+      if (!analyseRes.ok) throw new Error("Analysis failed.");
+      const analyseData = (await analyseRes.json()) as {
+        topics: Topic[];
+        totalQuestions: number;
+      };
+      mergeAnalysisResult(analyseData.topics, analyseData.totalQuestions);
       setShowAddFiles(false);
+    } catch (err) {
+      // Files were extracted and kept (setFiles above already ran) even if
+      // analysis fails — only the topic re-analysis is what didn't complete,
+      // so say so instead of silently leaving stale topics with no
+      // indication anything went wrong.
+      setAddFilesError(
+        err instanceof Error ? err.message : "Could not add these files — try again.",
+      );
     } finally {
       setIsAddingFiles(false);
     }
@@ -460,6 +465,7 @@ export default function EditorPage() {
               Upload more lecture slides, tutorial solutions, or past exams. Analysis will
               re-run against everything uploaded so far.
             </p>
+            {addFilesError && <p className="text-sm text-red-700">{addFilesError}</p>}
             <button
               type="button"
               onClick={() => addFilesInputRef.current?.click()}

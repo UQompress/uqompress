@@ -2837,3 +2837,266 @@ Analysis failed SyntaxError: Unterminated string in JSON at position 1875 (line 
  POST /api/generate-questionnaire 200 in 4.1s (next.js: 9ms, application-code: 4.1s)
  POST /api/generate-questionnaire 200 in 3.1s (next.js: 3ms, application-code: 3.1s)
  POST /api/generate-content 200 in 4.9s (next.js: 12ms, application-code: 4.9s)
+ GET /editor 200 in 38ms (next.js: 11ms, application-code: 27ms)
+ GET /editor 200 in 151ms (next.js: 5ms, application-code: 146ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <EditorPage params={Promise} searchParams={Promise}>
+      <div className="flex h-scr...">
+        <TopBar>
+        <FormattingToolbar>
+        <DndContext sensors={[...]} onDragEnd={function handleDragEnd}>
+          <div className="flex flex-...">
+            <Sidebar mode="edit" onModeChange={function bound dispatchSetState} onAddFiles={function onAddFiles}>
+              <aside className="flex w-56 ...">
+                <div>
+                <div className="flex flex-...">
+                  <div>
+                  <div>
+                  <CollapsibleSection title="Blocks">
+                    <div>
+                      <button>
+                      <div className="flex flex-...">
+                        <div>
+                          <button>
+                          <div className="ml-2 flex ...">
+                            <TextKindItem kind="topic">
+                              <button
+                                ref={function useNodeRef.useCallback[setNodeRef]}
+                                onPointerDown={function useSyntheticListeners.useMemo}
+                                role="button"
+                                tabIndex={0}
+                                aria-disabled={false}
+                                aria-pressed={undefined}
+                                aria-roledescription="draggable"
++                               aria-describedby="DndDescribedBy-0"
+-                               aria-describedby="DndDescribedBy-1"
+                                type="button"
+                                onClick={function onClick}
+                                title="Click to add, or drag onto the canvas"
+                                className={"w-full border border-grey-light px-2 py-1.5 text-left hover:border-uq-pur..."}
+                              >
+                            <TextKindItem kind="subtopic">
+                              <button
+                                ref={function useNodeRef.useCallback[setNodeRef]}
+                                onPointerDown={function useSyntheticListeners.useMemo}
+                                role="button"
+                                tabIndex={0}
+                                aria-disabled={false}
+                                aria-pressed={undefined}
+                                aria-roledescription="draggable"
++                               aria-describedby="DndDescribedBy-0"
+-                               aria-describedby="DndDescribedBy-1"
+                                type="button"
+                                onClick={function onClick}
+                                title="Click to add, or drag onto the canvas"
+                                className={"w-full border border-grey-light px-2 py-1.5 text-left hover:border-uq-pur..."}
+                              >
+                            <TextKindItem kind="body">
+                              <button
+                                ref={function useNodeRef.useCallback[setNodeRef]}
+                                onPointerDown={function useSyntheticListeners.useMemo}
+                                role="button"
+                                tabIndex={0}
+                                aria-disabled={false}
+                                aria-pressed={undefined}
+                                aria-roledescription="draggable"
++                               aria-describedby="DndDescribedBy-0"
+-                               aria-describedby="DndDescribedBy-1"
+                                type="button"
+                                onClick={function onClick}
+                                title="Click to add, or drag onto the canvas"
+                                className={"w-full border border-grey-light px-2 py-1.5 text-left hover:border-uq-pur..."}
+                              >
+                            <TextKindItem kind="subbody">
+                              <button
+                                ref={function useNodeRef.useCallback[setNodeRef]}
+                                onPointerDown={function useSyntheticListeners.useMemo}
+                                role="button"
+                                tabIndex={0}
+                                aria-disabled={false}
+                                aria-pressed={undefined}
+                                aria-roledescription="draggable"
++                               aria-describedby="DndDescribedBy-0"
+-                               aria-describedby="DndDescribedBy-1"
+                                type="button"
+                                onClick={function onClick}
+                                title="Click to add, or drag onto the canvas"
+                                className={"w-full border border-grey-light px-2 py-1.5 text-left hover:border-uq-pur..."}
+                              >
+                        <SidebarItem type="table" label="Table" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="image" label="Image" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="divider" label="Divider" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                  <CollapsibleSection title="Design ele...">
+                    <div>
+                      <button>
+                      <div className="flex flex-...">
+                        <SidebarItem type="line" label="Straight line" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="arrow" label="Arrow" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="tick" label="Tick" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="circle" label="Circle" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                        <SidebarItem type="cross" label="Cross" icon={{...}}>
+                          <button
+                            ref={function useNodeRef.useCallback[setNodeRef]}
+                            onPointerDown={function useSyntheticListeners.useMemo}
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={false}
+                            aria-pressed={undefined}
+                            aria-roledescription="draggable"
++                           aria-describedby="DndDescribedBy-0"
+-                           aria-describedby="DndDescribedBy-1"
+                            type="button"
+                            onClick={function onClick}
+                            title="Click to add, or drag onto the canvas"
+                            className={"flex w-full items-center gap-2 border border-grey-light px-3 py-2 text-sm hov..."}
+                          >
+                  ...
+            ...
+          ...
+          ...
+ 
+ GET / 200 in 48ms (next.js: 6ms, application-code: 43ms)
+ GET / 200 in 41ms (next.js: 7ms, application-code: 33ms)
+ GET / 200 in 717ms (next.js: 187ms, application-code: 530ms)
+ GET /setup 200 in 63ms (next.js: 22ms, application-code: 41ms)
+ POST /api/lookup-ecp 200 in 576ms (next.js: 12ms, application-code: 565ms)
+ POST /api/extract-pdf 200 in 1959ms (next.js: 5ms, application-code: 1954ms)
+Analysis failed SyntaxError: Unterminated string in JSON at position 3539 (line 105 column 12)
+    at JSON.parse (<anonymous>)
+    at extractJson (lib\ai-client.ts:16:17)
+    at POST (app\api\analyse\route.ts:77:31)
+  14 |     // isn't already part of a valid JSON escape sequence, then retry once.
+  15 |     const sanitized = jsonText.replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
+> 16 |     return JSON.parse(sanitized) as T;
+     |                 ^
+  17 |   }
+  18 | }
+  19 |
+ POST /api/analyse 200 in 10.9s (next.js: 24ms, application-code: 10.9s)
+ GET /editor 200 in 42ms (next.js: 6ms, application-code: 36ms)
+ POST /api/lookup-ecp 200 in 3.6s (next.js: 5ms, application-code: 3.6s)
+ POST /api/analyse 200 in 4.0s (next.js: 5ms, application-code: 4.0s)
+ GET /editor 200 in 40ms (next.js: 6ms, application-code: 34ms)
+ GET /editor 200 in 48ms (next.js: 4ms, application-code: 44ms)
+ GET /editor 200 in 25ms (next.js: 3ms, application-code: 21ms)
+ GET /editor 200 in 56ms (next.js: 15ms, application-code: 41ms)
+ GET /editor 200 in 35ms (next.js: 11ms, application-code: 24ms)
+ GET /editor 200 in 37ms (next.js: 11ms, application-code: 26ms)
+ POST /api/analyse 200 in 1292ms (next.js: 7ms, application-code: 1285ms)

@@ -123,19 +123,14 @@ export default function SetupPage() {
 
       setIsAnalysing(true);
       setAnalysisStatus("loading");
-      try {
-        const res = await fetch("/api/analyse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseCode, ecpText, files: extracted }),
-        });
-        if (!res.ok) throw new Error("Analysis failed.");
-        const data = (await res.json()) as { topics: Topic[]; totalQuestions: number };
-        setAnalysisResult(data.topics, data.totalQuestions);
-      } catch {
-        // TEMP: bypass analysis failure — AI/server off; continue with mock data.
-        setAnalysisResult(MOCK_TOPICS, MOCK_TOTAL_QUESTIONS);
-      }
+      const res = await fetch("/api/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseCode, ecpText, files: extracted }),
+      });
+      if (!res.ok) throw new Error("Analysis failed.");
+      const data = (await res.json()) as { topics: Topic[]; totalQuestions: number };
+      setAnalysisResult(data.topics, data.totalQuestions);
       setAnalysisStatus("done");
       setStep("orientation");
     } catch (err) {
