@@ -90,20 +90,33 @@ export function stripLatex(text: string): string {
 let geminiClient: OpenAI | null = null;
 
 export const GEMINI_SERVICE_TIER = "priority" as const;
+export const AI_REQUEST_MAX_ATTEMPTS = 3;
+
+const AI_RETRY_BASE_DELAY_MS = 400;
+
+function wait(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
 
 function getGeminiClient(): OpenAI | null {
   const baseURL = process.env.UNGATE_BASE_URL;
   const apiKey = process.env.UNGATE_API_KEY;
   if (!baseURL || !apiKey) return null;
-  if (!geminiClient) geminiClient = new OpenAI({ apiKey, baseURL });
+  // Retry here rather than inside the SDK so the policy is explicit and also
+  // covers an unusable response shape, not just selected HTTP status codes.
+  if (!geminiClient) geminiClient = new OpenAI({ apiKey, baseURL, maxRetries: 0 });
   return geminiClient;
 }
 
 // Gemini exposes an OpenAI-compatible Chat Completions endpoint at the
 // configured base URL, so the existing OpenAI SDK can be reused directly.
-async function callGemini(prompt: string, maxTokens: number): Promise<string | null> {
+async function callGemini(prompt: string, maxTokens: number): Promise<string> {
   const client = getGeminiClient();
-  if (!client) return null;
+  if (!client) {
+    throw new Error(
+      "AI provider is not configured — set UNGATE_BASE_URL and UNGATE_API_KEY.",
+    );
+  }
 
   const model = process.env.UNGATE_MODEL;
   if (!model) {
@@ -113,23 +126,42 @@ async function callGemini(prompt: string, maxTokens: number): Promise<string | n
     );
   }
 
-  const response = await client.chat.completions.create({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    max_tokens: maxTokens,
-    reasoning_effort: "low",
-    service_tier: GEMINI_SERVICE_TIER,
-  });
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= AI_REQUEST_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: maxTokens,
+        reasoning_effort: "low",
+        service_tier: GEMINI_SERVICE_TIER,
+      });
 
-  const text = response.choices[0]?.message?.content;
-  if (typeof text !== "string") {
-    throw new Error("Unexpected response shape from Gemini.");
+      const text = response.choices[0]?.message?.content;
+      if (typeof text !== "string" || text.trim().length === 0) {
+        throw new Error("Unexpected response shape from Gemini.");
+      }
+      return text;
+    } catch (error) {
+      lastError = error;
+      if (attempt === AI_REQUEST_MAX_ATTEMPTS) break;
+
+      const delayMs = AI_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+      console.warn(
+        `AI request attempt ${attempt} failed; retrying in ${delayMs}ms.`,
+        error,
+      );
+      await wait(delayMs);
+    }
   }
-  return text;
+
+  throw new Error(
+    `AI request failed after ${AI_REQUEST_MAX_ATTEMPTS} attempts.`,
+    { cause: lastError },
+  );
 }
 
-// Signals the caller to fall back to mock data when Gemini is not configured.
-export async function getCompletionText(prompt: string, maxTokens: number): Promise<string | null> {
+export async function getCompletionText(prompt: string, maxTokens: number): Promise<string> {
   return callGemini(prompt, maxTokens);
 }
 

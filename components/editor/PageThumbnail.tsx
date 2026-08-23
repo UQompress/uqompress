@@ -47,7 +47,8 @@ export function PageThumbnail({
               background:
                 block.type === "ink"
                   ? (block.shapeColor ?? "#171717")
-                  : block.type === "text" && block.textKind === "topic"
+                  : block.type === "text" &&
+                      (block.textKind === "topic" || block.textKind === "subtopic")
                     ? "#51247a"
                     : "#d4d4d4",
             }}

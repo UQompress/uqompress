@@ -2,8 +2,10 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 import { Modal } from "@/components/Modal";
+import { prepareQuickFillContent } from "@/lib/prepare-quick-fill";
+import { buildQuickFillLayout } from "@/lib/quick-fill";
 import { useStudioStore } from "@/lib/store";
 import type {
   GeneratedContent,
@@ -117,13 +119,19 @@ function AccordionChevron({ open }: { open: boolean }) {
   );
 }
 
-export function SuggestionsPanel() {
+export function SuggestionsPanel({ onCanvasFilled }: { onCanvasFilled?: () => void }) {
   const topics = useStudioStore((s) => s.topics);
   const files = useStudioStore((s) => s.files);
   const generatedContent = useStudioStore((s) => s.generatedContent);
+  const orientation = useStudioStore((s) => s.orientation);
+  const gridRows = useStudioStore((s) => s.gridRows);
+  const gridCols = useStudioStore((s) => s.gridCols);
+  const blocks = useStudioStore((s) => s.blocks);
   const setGeneratedContentStore = useStudioStore((s) => s.setGeneratedContent);
+  const setGeneratedContentsStore = useStudioStore((s) => s.setGeneratedContents);
   const appendGeneratedContentStore = useStudioStore((s) => s.appendGeneratedContent);
   const setQuestionnaireAnswersStore = useStudioStore((s) => s.setQuestionnaireAnswers);
+  const quickFillCanvas = useStudioStore((s) => s.quickFillCanvas);
 
   const [openTopicIds, setOpenTopicIds] = useState<Set<string>>(new Set());
   const [openQuestionTypeIds, setOpenQuestionTypeIds] = useState<Set<string>>(new Set());
@@ -139,6 +147,9 @@ export function SuggestionsPanel() {
   const [skippingAll, setSkippingAll] = useState(false);
   const [error, setError] = useState<{ questionTypeId: string; message: string } | null>(null);
   const [sourcesQuestionTypeId, setSourcesQuestionTypeId] = useState<string | null>(null);
+  const [showQuickFillConfirm, setShowQuickFillConfirm] = useState(false);
+  const [quickFillMessage, setQuickFillMessage] = useState<string | null>(null);
+  const [isQuickFilling, setIsQuickFilling] = useState(false);
 
   function toggleSet(setter: Dispatch<SetStateAction<Set<string>>>, id: string) {
     setter((prev) => {
@@ -219,6 +230,61 @@ export function SuggestionsPanel() {
     } finally {
       setSkippingAll(false);
     }
+  }
+
+  function applyQuickFill(content: Record<string, GeneratedContent>) {
+    const layout = buildQuickFillLayout({
+      topics,
+      generatedContent: content,
+      orientation,
+      gridRows,
+      gridCols,
+    });
+    if (layout.blocks.length === 0) return;
+
+    quickFillCanvas(layout.blocks, layout.pageCount);
+    setShowQuickFillConfirm(false);
+    setQuickFillMessage(
+      `Filled ${layout.topicCount} topic${layout.topicCount === 1 ? "" : "s"} across ${layout.pageCount} page${layout.pageCount === 1 ? "" : "s"}.`,
+    );
+    onCanvasFilled?.();
+    requestAnimationFrame(() => {
+      document.getElementById("cheat-sheet-page-0")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  }
+
+  async function prepareAndApplyQuickFill() {
+    if (isQuickFilling) return;
+    setIsQuickFilling(true);
+    setQuickFillMessage(null);
+    try {
+      const readyContent = await prepareQuickFillContent({
+        topics,
+        sourceFileNames: files.map((file) => file.name),
+        existingContent: generatedContent,
+      });
+      setGeneratedContentsStore(readyContent);
+      applyQuickFill(readyContent);
+    } catch (err) {
+      setQuickFillMessage(
+        err instanceof Error
+          ? err.message
+          : "Quick Fill failed after retrying content generation.",
+      );
+    } finally {
+      setIsQuickFilling(false);
+    }
+  }
+
+  function handleQuickFill() {
+    if (blocks.length > 0) {
+      setShowQuickFillConfirm(true);
+      return;
+    }
+    void prepareAndApplyQuickFill();
   }
 
   async function handleViewMore(topic: Topic, questionType: QuestionType) {
@@ -377,6 +443,21 @@ export function SuggestionsPanel() {
             </button>
           )}
         </div>
+        <button
+          type="button"
+          onClick={handleQuickFill}
+          disabled={isQuickFilling}
+          title="Arrange all analysed content on the canvas by exam frequency"
+          className="mb-1 flex w-full items-center justify-center gap-1.5 bg-uq-purple px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+        >
+          <Sparkles size={13} strokeWidth={1.5} />
+          {isQuickFilling ? "Preparing..." : "Quick fill"}
+        </button>
+        {quickFillMessage ? (
+          <p className="mb-1 text-xs text-grey" role="status">
+            {quickFillMessage}
+          </p>
+        ) : null}
         {ranked.map((topic, i) => {
           const topicOpen = openTopicIds.has(topic.id);
 
@@ -510,6 +591,31 @@ export function SuggestionsPanel() {
       {sourcesContent && sourcesQuestionTypeId && (
         <Modal title="Sources" onClose={() => setSourcesQuestionTypeId(null)}>
           <SourcesList sources={sourcesContent.sources} />
+        </Modal>
+      )}
+      {showQuickFillConfirm && (
+        <Modal title="Replace the current canvas?" onClose={() => setShowQuickFillConfirm(false)}>
+          <p className="mb-4 text-sm text-grey">
+            Quick Fill will replace the blocks currently on the canvas with all generated content.
+            You can undo this change afterward.
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => void prepareAndApplyQuickFill()}
+              disabled={isQuickFilling}
+              className="bg-uq-purple px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            >
+              {isQuickFilling ? "Preparing..." : "Replace and fill"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowQuickFillConfirm(false)}
+              className="px-4 py-2 text-sm text-grey hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
         </Modal>
       )}
     </>

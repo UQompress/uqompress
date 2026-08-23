@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { buildQuickFillLayout } from "./quick-fill";
 import type {
   AnalysisStatus,
   BlockType,
@@ -19,10 +20,13 @@ import {
 } from "./editor-constants";
 
 const HISTORY_LIMIT = 10;
+const DEFAULT_GRID_ROWS = 1;
+const DEFAULT_GRID_COLS = 3;
 
 type CanvasSnapshot = {
   blocks: CanvasBlock[];
   pageCount: number;
+  quickFillActive: boolean;
 };
 
 type BlockExtras = Partial<
@@ -49,6 +53,7 @@ type StudioState = {
   blocks: CanvasBlock[];
   pageCount: number;
   activePageIndex: number;
+  quickFillActive: boolean;
   past: CanvasSnapshot[];
   future: CanvasSnapshot[];
 
@@ -78,10 +83,12 @@ type StudioState = {
   setSelectedQuestionTypeId: (id: string | null) => void;
   setQuestionnaireAnswers: (questionTypeId: string, answers: QuestionnaireAnswer[]) => void;
   setGeneratedContent: (questionTypeId: string, content: GeneratedContent) => void;
+  setGeneratedContents: (content: Record<string, GeneratedContent>) => void;
   appendGeneratedContent: (questionTypeId: string, content: GeneratedContent) => void;
   setAnnotationMode: (on: boolean) => void;
   setAnnotationColor: (color: string) => void;
   setAnnotationStrokeWidth: (width: number) => void;
+  quickFillCanvas: (blocks: CanvasBlock[], pageCount: number) => void;
   setGridSize: (rows: number, cols: number) => void;
   setActivePageIndex: (index: number) => void;
   addPage: () => void;
@@ -127,10 +134,15 @@ const DEFAULT_SIZE: Record<BlockType, { width: number; height: number }> = {
 // drag payload or dev-mode HMR module desync — instead of crashing.
 const FALLBACK_SIZE = { width: 220, height: 32 };
 
-function cloneSnapshot(state: { blocks: CanvasBlock[]; pageCount: number }): CanvasSnapshot {
+function cloneSnapshot(state: {
+  blocks: CanvasBlock[];
+  pageCount: number;
+  quickFillActive: boolean;
+}): CanvasSnapshot {
   return {
     blocks: structuredClone(state.blocks),
     pageCount: state.pageCount,
+    quickFillActive: state.quickFillActive,
   };
 }
 
@@ -188,6 +200,7 @@ export const useStudioStore = create<StudioState>((set) => ({
   blocks: [],
   pageCount: 1,
   activePageIndex: 0,
+  quickFillActive: false,
   past: [],
   future: [],
 
@@ -196,8 +209,8 @@ export const useStudioStore = create<StudioState>((set) => ({
   questionnaireAnswers: {},
   generatedContent: {},
 
-  gridRows: 1,
-  gridCols: 1,
+  gridRows: DEFAULT_GRID_ROWS,
+  gridCols: DEFAULT_GRID_COLS,
 
   annotationMode: false,
   annotationColor: "#171717",
@@ -225,27 +238,35 @@ export const useStudioStore = create<StudioState>((set) => ({
         blocks: [],
         pageCount: 1,
         activePageIndex: 0,
+        quickFillActive: false,
         past: [],
         future: [],
         selectedTopicId: null,
         selectedQuestionTypeId: null,
         questionnaireAnswers: {},
         generatedContent: {},
-        gridRows: 1,
-        gridCols: 1,
+        gridRows: DEFAULT_GRID_ROWS,
+        gridCols: DEFAULT_GRID_COLS,
         annotationMode: false,
       };
     }),
   setEcpText: (text) => set({ ecpText: text }),
   setFiles: (files) => set({ files }),
   setAnalysisStatus: (status) => set({ analysisStatus: status }),
-  setAnalysisResult: (topics, totalQuestions) => set({ topics, totalQuestions }),
+  setAnalysisResult: (topics, totalQuestions) =>
+    set({ topics, totalQuestions, quickFillActive: false }),
 
   // Used by "Add more files": re-analysis always runs against the full merged
   // file set, so this replaces topics/totalQuestions wholesale rather than
   // trying to reconcile counts from two partial analyses.
   mergeAnalysisResult: (topics, totalQuestions) =>
-    set({ topics, totalQuestions, selectedTopicId: null, selectedQuestionTypeId: null }),
+    set({
+      topics,
+      totalQuestions,
+      selectedTopicId: null,
+      selectedQuestionTypeId: null,
+      quickFillActive: false,
+    }),
 
   setOrientation: (orientation) => set({ orientation }),
   setSelectedTopicId: (id) => set({ selectedTopicId: id }),
@@ -260,6 +281,8 @@ export const useStudioStore = create<StudioState>((set) => ({
     set((state) => ({
       generatedContent: { ...state.generatedContent, [questionTypeId]: content },
     })),
+
+  setGeneratedContents: (content) => set({ generatedContent: content }),
 
   // Used by "View more" — adds to what's already shown instead of replacing it.
   appendGeneratedContent: (questionTypeId, content) =>
@@ -280,10 +303,36 @@ export const useStudioStore = create<StudioState>((set) => ({
   setAnnotationColor: (color) => set({ annotationColor: color }),
   setAnnotationStrokeWidth: (width) => set({ annotationStrokeWidth: width }),
 
+  quickFillCanvas: (blocks, pageCount) =>
+    set((state) => ({
+      ...pushPast(state),
+      blocks,
+      pageCount: Math.max(1, pageCount),
+      activePageIndex: 0,
+      quickFillActive: true,
+    })),
+
   setGridSize: (rows, cols) =>
     set((state) => {
       const gridRows = Math.max(1, rows);
       const gridCols = Math.max(1, cols);
+      if (state.quickFillActive) {
+        const layout = buildQuickFillLayout({
+          topics: state.topics,
+          generatedContent: state.generatedContent,
+          orientation: state.orientation,
+          gridRows,
+          gridCols,
+        });
+        return {
+          gridRows,
+          gridCols,
+          blocks: layout.blocks,
+          pageCount: layout.pageCount,
+          activePageIndex: Math.min(state.activePageIndex, layout.pageCount - 1),
+          quickFillActive: true,
+        };
+      }
       const { width: pageWidth, height: pageHeight } = getPageDimensions(state.orientation);
       return {
         gridRows,
@@ -319,6 +368,7 @@ export const useStudioStore = create<StudioState>((set) => ({
       ...pushPast(state),
       pageCount: state.pageCount + 1,
       activePageIndex: state.pageCount,
+      quickFillActive: false,
     })),
 
   deletePage: (index) =>
@@ -336,6 +386,7 @@ export const useStudioStore = create<StudioState>((set) => ({
         blocks,
         pageCount,
         activePageIndex: Math.min(state.activePageIndex, pageCount - 1),
+        quickFillActive: false,
       };
     }),
 
@@ -368,7 +419,7 @@ export const useStudioStore = create<StudioState>((set) => ({
         content,
         ...resolved,
       };
-      return { ...pushPast(state), blocks: [...state.blocks, block] };
+      return { ...pushPast(state), blocks: [...state.blocks, block], quickFillActive: false };
     }),
 
   addBlockAt: (type, content, x, y, size, pageIndex, extras) =>
@@ -399,16 +450,17 @@ export const useStudioStore = create<StudioState>((set) => ({
         content,
         ...resolved,
       };
-      return { ...pushPast(state), blocks: [...state.blocks, block] };
+      return { ...pushPast(state), blocks: [...state.blocks, block], quickFillActive: false };
     }),
 
   updateBlock: (id, patch, opts) =>
     set((state) => {
       const blocks = state.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b));
-      if (opts?.transient) return { blocks };
+      if (opts?.transient) return { blocks, quickFillActive: false };
       return {
         ...pushPast(state, opts?.coalesceKey),
         blocks,
+        quickFillActive: false,
       };
     }),
 
@@ -416,6 +468,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     set((state) => ({
       ...pushPast(state),
       blocks: state.blocks.filter((b) => b.id !== id),
+      quickFillActive: false,
     })),
 
   captureHistory: () =>
@@ -431,6 +484,7 @@ export const useStudioStore = create<StudioState>((set) => ({
       return {
         blocks: previous.blocks,
         pageCount: previous.pageCount,
+        quickFillActive: previous.quickFillActive,
         activePageIndex: Math.min(state.activePageIndex, Math.max(0, previous.pageCount - 1)),
         past: state.past.slice(0, -1),
         future: [...state.future, cloneSnapshot(state)].slice(-HISTORY_LIMIT),
@@ -445,6 +499,7 @@ export const useStudioStore = create<StudioState>((set) => ({
       return {
         blocks: next.blocks,
         pageCount: next.pageCount,
+        quickFillActive: next.quickFillActive,
         activePageIndex: Math.min(state.activePageIndex, Math.max(0, next.pageCount - 1)),
         future: state.future.slice(0, -1),
         past: [...state.past, cloneSnapshot(state)].slice(-HISTORY_LIMIT),

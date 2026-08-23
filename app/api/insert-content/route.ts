@@ -6,10 +6,6 @@ type InsertContentBody = {
   topic: Pick<Topic, "name" | "rationale" | "sourceExcerpt">;
 };
 
-function mockContent(topic: InsertContentBody["topic"]): string {
-  return `${topic.name}: ${topic.rationale}`.slice(0, 220);
-}
-
 export async function POST(request: Request) {
   const { topic } = (await request.json()) as InsertContentBody;
 
@@ -33,14 +29,13 @@ exactly like this: {"content": string}`;
 
   try {
     const text = await getCompletionText(prompt, 512);
-    if (text === null) {
-      return Response.json({ content: mockContent(topic) });
-    }
-
     const parsed = extractJson<{ content: string }>(text);
     return Response.json(parsed);
   } catch (err) {
     console.error("Content drafting failed", err);
-    return Response.json({ error: "Content drafting failed." }, { status: 502 });
+    return Response.json(
+      { error: "Content drafting failed after retrying the AI provider." },
+      { status: 502 },
+    );
   }
 }
