@@ -2834,3 +2834,6 @@ Analysis failed SyntaxError: Unterminated string in JSON at position 1875 (line 
  GET /editor 200 in 37ms (next.js: 8ms, application-code: 29ms)
  GET /editor 200 in 58ms (next.js: 4ms, application-code: 54ms)
  GET /editor 200 in 31ms (next.js: 4ms, application-code: 28ms)
+ POST /api/generate-questionnaire 200 in 4.1s (next.js: 9ms, application-code: 4.1s)
+ POST /api/generate-questionnaire 200 in 3.1s (next.js: 3ms, application-code: 3.1s)
+ POST /api/generate-content 200 in 4.9s (next.js: 12ms, application-code: 4.9s)
