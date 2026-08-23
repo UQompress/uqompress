@@ -464,7 +464,12 @@ export default function EditorPage() {
               ))}
             </div>
           )}
-          <SuggestionsPanel />
+          <SuggestionsPanel
+            onCanvasFilled={() => {
+              setSidebarMode("edit");
+              setSelectedBlockId(null);
+            }}
+          />
         </div>
       </DndContext>
 

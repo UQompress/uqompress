@@ -8,7 +8,7 @@ export const ALIGN_SNAP_THRESHOLD = 6;
 // Print point sizes. The A4 canvas is sized in CSS px so that 1px = 1pt,
 // which keeps on-screen sizes identical to the exported PDF.
 export const FONT_SIZE_SCALE = [5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 14, 16, 18, 24];
-export const DEFAULT_FONT_SIZE = 12;
+export const DEFAULT_FONT_SIZE = 9;
 export const MIN_FONT_SIZE = 4;
 export const MAX_FONT_SIZE = 72;
 export const TEXT_LINE_HEIGHT = 1.15;
@@ -26,7 +26,7 @@ export const TEXT_KIND_DEFAULTS: Record<
   }
 > = {
   topic: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: 700,
     color: "#ffffff",
     background: "#51247a",
@@ -35,16 +35,16 @@ export const TEXT_KIND_DEFAULTS: Record<
     indent: 0,
   },
   subtopic: {
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: 700,
-    color: "#171717",
+    color: "#51247a",
     background: "transparent",
     textTransform: "uppercase",
     padding: "0px 4px",
     indent: 0,
   },
   body: {
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: 400,
     color: "#171717",
     background: "transparent",
@@ -53,7 +53,7 @@ export const TEXT_KIND_DEFAULTS: Record<
     indent: 0,
   },
   subbody: {
-    fontSize: 11.5,
+    fontSize: 8,
     fontWeight: 400,
     color: "#171717",
     background: "transparent",
@@ -64,10 +64,10 @@ export const TEXT_KIND_DEFAULTS: Record<
 };
 
 export const TEXT_KIND_LABELS: Record<TextBlockKind, string> = {
-  topic: "Topic",
-  subtopic: "Subtopic",
-  body: "Body",
-  subbody: "Sub body",
+  topic: "Main topic",
+  subtopic: "Topic",
+  body: "Content",
+  subbody: "Sub content",
 };
 
 const GRID_WIDTH_TYPES: BlockType[] = ["text", "table", "image", "divider"];
@@ -202,7 +202,7 @@ export function clampFontSize(value: number): number {
 
 // Content dragged in from the AI Suggestion Bar is often much longer than a
 // blank "Text" block's default size — sizing it off the fixed DEFAULT_SIZE
-// clipped the content. Rough estimate at 12pt body / ~28 chars per column.
+// clipped the content. Rough estimate at the default body size / ~28 chars per column.
 export function estimateTextBlockSize(content: string): { width: number; height: number } {
   const CHARS_PER_LINE = 28;
   const LINE_HEIGHT = DEFAULT_FONT_SIZE * TEXT_LINE_HEIGHT;

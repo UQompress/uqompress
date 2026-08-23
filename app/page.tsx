@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
@@ -28,15 +27,12 @@ export default function Home() {
   }
 
   return (
-    <main className="flex h-dvh flex-1 flex-row overflow-hidden">
-      <section className="relative h-full w-1/2 overflow-hidden bg-uq-purple">
-        <Image
+    <main className="flex h-screen flex-row overflow-hidden">
+      <section className="relative h-screen w-1/2 overflow-hidden bg-uq-purple">
+        <img
           src="/landing-image.png"
           alt="UQompress"
-          fill
-          priority
-          sizes="50vw"
-          className="object-cover"
+          className="h-full w-full object-cover"
         />
       </section>
 

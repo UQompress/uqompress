@@ -1,5 +1,4 @@
 import { extractJson, getCompletionText, stripLatex } from "@/lib/ai-client";
-import { MOCK_QUESTIONNAIRE } from "@/lib/mock-data";
 import type { QuestionnaireQuestion } from "@/lib/types";
 
 // Defense in depth against stray LaTeX: some backslash commands (\rightarrow,
@@ -24,11 +23,9 @@ type RequestBody = {
   sourceExcerpt?: string;
 };
 
-// Models (and the hardcoded mock set) skew toward putting the correct answer
-// first, so most questions end up with the same answer position — shuffle
-// each question's options server-side to guarantee an unpredictable position
-// regardless of source. Safe because the UI matches answers by string value
-// (option === question.correctAnswer), not by index.
+// Models skew toward putting the correct answer first, so shuffle each
+// question's options server-side to guarantee an unpredictable position.
+// Safe because the UI matches answers by string value, not by index.
 function shuffleOptions(questions: QuestionnaireQuestion[]): QuestionnaireQuestion[] {
   return questions.map((q) => {
     const options = [...q.options];
@@ -76,14 +73,13 @@ exactly like this:
 
   try {
     const text = await getCompletionText(prompt, 2048);
-    if (text === null) {
-      return Response.json({ questions: shuffleOptions(MOCK_QUESTIONNAIRE) });
-    }
-
     const parsed = extractJson<{ questions: QuestionnaireQuestion[] }>(text);
     return Response.json({ questions: shuffleOptions(sanitizeQuestions(parsed.questions)) });
   } catch (err) {
-    console.error("Quiz generation failed", err);
-    return Response.json({ error: "Quiz generation failed." }, { status: 502 });
+    console.error("Questionnaire generation failed", err);
+    return Response.json(
+      { error: "Questionnaire generation failed after retrying the AI provider." },
+      { status: 502 },
+    );
   }
 }

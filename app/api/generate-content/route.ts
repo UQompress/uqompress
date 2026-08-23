@@ -1,6 +1,5 @@
 import { extractJson, getCompletionText, stripLatex } from "@/lib/ai-client";
 import { contentGuidePromptBlock } from "@/lib/content-guide";
-import { mockGeneratedContent } from "@/lib/mock-data";
 import type { GeneratedContent, QuestionnaireAnswer } from "@/lib/types";
 
 function sanitizeContent(content: GeneratedContent): GeneratedContent {
@@ -66,19 +65,28 @@ ${existingBlock}${answersBlock}
 
 Apply the guide's writing rules (§1, §4, §6) to every fragment. Each fragment must use
 the card format from §1: "[Concept Name]: body" — label is the actual concept name, never a
-narrator lead-in. Run the §10 self-check on every fragment before returning.
+narrator lead-in. Run the §10 self-check on every fragment before returning. Prefer dense,
+exam-usable detail over vague summaries: preserve the reasoning chain, not just the answer.
 
 This endpoint returns a simplified JSON shape (not the full §9 schema). Map guide content
 into these three categories:
 
-- theory ("Key Theory"): 4-6 fragments. Each is one concept card — "[Label]: body", one
-  concept per fragment, split bundled concepts. Preserve exact course vocabulary and notation
-  (§4). Prefer uploaded sources; web lookup only when §6 permits. No citation tags inline.
-- sampleExamples ("Example Question & Solution"): exactly ONE fragment using the "example"
-  card style from §5 — compressed question skeleton, answer, and one-line method, joined with
-  "\\n". No citation tags inline.
-- commonErrors ("Common Errors"): 1-3 fragments using the "error" card style from §5 — name
-  the misconception, state what is true. No "Don't" openers. No citation tags inline.
+- theory ("Key Theory"): 8-12 fragments. Each is one concept card — "[Label]: body", one
+  concept per fragment, split bundled concepts, and stay within the guide's §4 word budget.
+  Build detailed coverage across separate cards: definition/governing principle, recognition
+  cue, exact formula or notation, algorithm/method steps, required conditions, comparisons,
+  and edge or boundary cases. Preserve exact course vocabulary and notation (§4). Prefer
+  uploaded sources; web lookup only when §6 permits. No citation tags inline and no repeated
+  facts across cards.
+- sampleExamples ("Example Question & Solution"): exactly TWO fragments using the "example"
+  card style from §5. Each must be a different representative exam pattern and contain a
+  compact question skeleton plus labelled "Method:", "Working:", "Answer:", and "Check:"
+  lines joined with "\\n". Show enough intermediate reasoning to reproduce the method; do not
+  jump directly from the question to the answer. No citation tags inline.
+- commonErrors ("Common Errors"): 3-5 fragments using the "error" card style from §5. Name
+  the misconception and state the correction within the guide's §4 word budget; include a
+  compact diagnostic cue where space permits. Include source-specific boundary cases when
+  available. No "Don't" openers and no citation tags inline.
 
 CITATION: list every source used across all categories in the top-level "sources" array (one
 entry per source, deduped). Uploaded files: name + optional page/section. Web sources: only
@@ -93,15 +101,14 @@ exactly like this:
 {"sources": string[], "theory": string[], "sampleExamples": string[], "commonErrors": string[]}`;
 
   try {
-    const text = await getCompletionText(prompt, 2048);
-    if (text === null) {
-      return Response.json(mockGeneratedContent(topicName, questionTypeName));
-    }
-
+    const text = await getCompletionText(prompt, 4096);
     const parsed = extractJson<GeneratedContent>(text);
     return Response.json(sanitizeContent(parsed));
   } catch (err) {
     console.error("Content generation failed", err);
-    return Response.json({ error: "Content generation failed." }, { status: 502 });
+    return Response.json(
+      { error: "Content generation failed after retrying the AI provider." },
+      { status: 502 },
+    );
   }
 }

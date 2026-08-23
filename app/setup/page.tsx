@@ -6,8 +6,8 @@ import { FileText, Loader2, RectangleHorizontal, RectangleVertical, Upload, X } 
 import { AnalysingModal, isAbortError } from "@/components/AnalysingModal";
 import { TopBar } from "@/components/TopBar";
 import { attachPdfUrls } from "@/lib/materials";
+import { prepareQuickFillContent } from "@/lib/prepare-quick-fill";
 import { useStudioStore } from "@/lib/store";
-import { MOCK_TOPICS, MOCK_TOTAL_QUESTIONS } from "@/lib/mock-data";
 import type { ExtractedFile, Orientation, Topic } from "@/lib/types";
 
 export default function SetupPage() {
@@ -19,11 +19,13 @@ export default function SetupPage() {
   const setFiles = useStudioStore((s) => s.setFiles);
   const setAnalysisResult = useStudioStore((s) => s.setAnalysisResult);
   const setAnalysisStatus = useStudioStore((s) => s.setAnalysisStatus);
+  const setGeneratedContents = useStudioStore((s) => s.setGeneratedContents);
   const setOrientation = useStudioStore((s) => s.setOrientation);
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isPreparingQuickFill, setIsPreparingQuickFill] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "orientation">("form");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -119,12 +121,7 @@ export default function SetupPage() {
       if (controller.signal.aborted) return;
 
       if (extracted.length === 0) {
-        // No materials uploaded — fall back to mocked analysis so the flow
-        // stays demoable without requiring real course PDFs.
-        setAnalysisResult(MOCK_TOPICS, MOCK_TOTAL_QUESTIONS);
-        setAnalysisStatus("done");
-        setStep("orientation");
-        return;
+        throw new Error("Upload at least one PDF before running the AI analysis.");
       }
 
       setIsAnalysing(true);
@@ -135,11 +132,25 @@ export default function SetupPage() {
         body: JSON.stringify({ courseCode, ecpText, files: extracted }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error("Analysis failed.");
-      const data = (await res.json()) as { topics: Topic[]; totalQuestions: number };
-      if (controller.signal.aborted) return;
+      const data = (await res.json()) as {
+        topics?: Topic[];
+        totalQuestions?: number;
+        error?: string;
+      };
+      if (!res.ok || data.error || !data.topics || data.totalQuestions === undefined) {
+        throw new Error(data.error ?? "Analysis failed after retrying.");
+      }
+
       setAnalysisResult(data.topics, data.totalQuestions);
       setAnalysisStatus("done");
+      setIsAnalysing(false);
+
+      setIsPreparingQuickFill(true);
+      const initialContent = await prepareQuickFillContent({
+        topics: data.topics,
+        sourceFileNames: extracted.map((file) => file.name),
+      });
+      setGeneratedContents(initialContent);
       setStep("orientation");
     } catch (err) {
       if (isAbortError(err)) {
@@ -151,6 +162,7 @@ export default function SetupPage() {
     } finally {
       analyseAbortRef.current = null;
       setIsAnalysing(false);
+      setIsPreparingQuickFill(false);
     }
   }
 
@@ -163,7 +175,7 @@ export default function SetupPage() {
     router.push("/editor");
   }
 
-  const busy = isExtracting || isAnalysing;
+  const busy = isExtracting || isAnalysing || isPreparingQuickFill;
 
   if (step === "orientation") {
     return (
@@ -335,6 +347,8 @@ export default function SetupPage() {
             ? "Extracting text..."
             : isAnalysing
               ? "Analysing..."
+              : isPreparingQuickFill
+                ? "Preparing Quick Fill..."
               : "Analyse"}
         </button>
       </main>
