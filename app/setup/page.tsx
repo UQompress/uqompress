@@ -6,7 +6,6 @@ import { FileText, Loader2, RectangleHorizontal, RectangleVertical, Upload, X } 
 import { AnalysingModal, isAbortError } from "@/components/AnalysingModal";
 import { TopBar } from "@/components/TopBar";
 import { attachPdfUrls } from "@/lib/materials";
-import { prepareQuickFillContent } from "@/lib/prepare-quick-fill";
 import { useStudioStore } from "@/lib/store";
 import type { ExtractedFile, Orientation, Topic } from "@/lib/types";
 
@@ -19,13 +18,11 @@ export default function SetupPage() {
   const setFiles = useStudioStore((s) => s.setFiles);
   const setAnalysisResult = useStudioStore((s) => s.setAnalysisResult);
   const setAnalysisStatus = useStudioStore((s) => s.setAnalysisStatus);
-  const setGeneratedContents = useStudioStore((s) => s.setGeneratedContents);
   const setOrientation = useStudioStore((s) => s.setOrientation);
 
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
-  const [isPreparingQuickFill, setIsPreparingQuickFill] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "orientation">("form");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -144,13 +141,6 @@ export default function SetupPage() {
       setAnalysisResult(data.topics, data.totalQuestions);
       setAnalysisStatus("done");
       setIsAnalysing(false);
-
-      setIsPreparingQuickFill(true);
-      const initialContent = await prepareQuickFillContent({
-        topics: data.topics,
-        sourceFileNames: extracted.map((file) => file.name),
-      });
-      setGeneratedContents(initialContent);
       setStep("orientation");
     } catch (err) {
       if (isAbortError(err)) {
@@ -162,7 +152,6 @@ export default function SetupPage() {
     } finally {
       analyseAbortRef.current = null;
       setIsAnalysing(false);
-      setIsPreparingQuickFill(false);
     }
   }
 
@@ -175,7 +164,7 @@ export default function SetupPage() {
     router.push("/editor");
   }
 
-  const busy = isExtracting || isAnalysing || isPreparingQuickFill;
+  const busy = isExtracting || isAnalysing;
 
   if (step === "orientation") {
     return (
@@ -347,8 +336,6 @@ export default function SetupPage() {
             ? "Extracting text..."
             : isAnalysing
               ? "Analysing..."
-              : isPreparingQuickFill
-                ? "Preparing Quick Fill..."
               : "Analyse"}
         </button>
       </main>

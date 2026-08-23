@@ -658,6 +658,14 @@ export function SuggestionsPanel({ onCanvasFilled }: { onCanvasFilled?: () => vo
                                 <div className="flex flex-wrap gap-2">
                                   <button
                                     type="button"
+                                    onClick={() => handleDoQuestionnaire(topic, questionType)}
+                                    disabled={busy}
+                                    className="bg-uq-purple px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+                                  >
+                                    {isPreparingQuiz ? "Preparing quiz..." : "Do quiz"}
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => handleViewMore(topic, questionType)}
                                     disabled={isLoadingMore}
                                     className="border border-grey-light px-3 py-1.5 text-sm hover:border-uq-purple disabled:opacity-40"
