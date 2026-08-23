@@ -132,3 +132,51 @@ async function callGemini(prompt: string, maxTokens: number): Promise<string | n
 export async function getCompletionText(prompt: string, maxTokens: number): Promise<string | null> {
   return callGemini(prompt, maxTokens);
 }
+
+const TRANSCRIBE_PROMPT = `Transcribe all text in this image exactly as written, verbatim,
+preserving line breaks between distinct lines/points. The image may contain handwriting —
+do your best to read it accurately, including any mathematical notation (write it in plain
+text/Unicode, e.g. "x^2", "a/b", "≤", never LaTeX). If a word is genuinely illegible, write
+"[illegible]" in its place rather than guessing. Return ONLY the transcribed text — no
+commentary, no markdown formatting, no quotes around it, no "Here is the transcription:".`;
+
+// Same Gemini endpoint as callGemini, but with an image content part alongside
+// the text prompt — Gemini's OpenAI-compatible endpoint accepts the standard
+// multimodal `image_url` content part for this.
+export async function getImageTranscription(
+  imageBase64: string,
+  mediaType: string,
+): Promise<string | null> {
+  const client = getGeminiClient();
+  if (!client) return null;
+
+  const model = process.env.UNGATE_MODEL;
+  if (!model) {
+    throw new Error(
+      "UNGATE_BASE_URL/UNGATE_API_KEY are set but UNGATE_MODEL is missing — " +
+        "set UNGATE_MODEL to a Gemini model ID such as gemini-3.7-flash.",
+    );
+  }
+
+  const response = await client.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: TRANSCRIBE_PROMPT },
+          { type: "image_url", image_url: { url: `data:${mediaType};base64,${imageBase64}` } },
+        ],
+      },
+    ],
+    max_tokens: 2048,
+    reasoning_effort: "low",
+    service_tier: GEMINI_SERVICE_TIER,
+  });
+
+  const text = response.choices[0]?.message?.content;
+  if (typeof text !== "string") {
+    throw new Error("Unexpected response shape from Gemini.");
+  }
+  return text;
+}

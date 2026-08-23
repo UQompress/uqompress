@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import {
   Check,
@@ -11,6 +11,7 @@ import {
   Minus,
   MoveRight,
   PenLine,
+  ScanText,
   Table,
   Trash2,
   X,
@@ -18,6 +19,7 @@ import {
 import type { BlockType, TextBlockKind } from "@/lib/types";
 import { useStudioStore } from "@/lib/store";
 import { DEFAULT_CONTENT, TEXT_KIND_DEFAULTS, TEXT_KIND_LABELS } from "@/lib/editor-constants";
+import { plainTextToBlockHtml } from "@/lib/rich-text";
 import { Modal } from "@/components/Modal";
 import { PageThumbnail } from "./PageThumbnail";
 
@@ -152,8 +154,33 @@ export function Sidebar({
   const blocks = useStudioStore((s) => s.blocks);
   const activePageIndex = useStudioStore((s) => s.activePageIndex);
   const setActivePageIndex = useStudioStore((s) => s.setActivePageIndex);
+  const addBlock = useStudioStore((s) => s.addBlock);
   const [textOpen, setTextOpen] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const scanInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleScanImage(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    setIsScanning(true);
+    setScanError(null);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/ocr", { method: "POST", body: formData });
+      const data = (await res.json()) as { text?: string; error?: string };
+      if (!res.ok || data.error || !data.text) {
+        throw new Error(data.error ?? "Could not read text from this image.");
+      }
+      addBlock("text", plainTextToBlockHtml(data.text, "body"));
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : "Could not read text from this image.");
+    } finally {
+      setIsScanning(false);
+    }
+  }
 
   function handleDeletePage() {
     if (pageCount <= 1) return;
@@ -308,6 +335,30 @@ export function Sidebar({
             <FilePlus size={16} strokeWidth={1.5} />
             Add more files
           </button>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => scanInputRef.current?.click()}
+              disabled={isScanning}
+              title="Upload a photo of handwritten or printed notes — the text gets extracted into a new text block"
+              className="flex w-full items-center justify-center gap-2 border border-grey-light px-3 py-2 text-sm hover:border-uq-purple hover:text-uq-purple disabled:opacity-40"
+            >
+              <ScanText size={16} strokeWidth={1.5} />
+              {isScanning ? "Reading image..." : "Upload handwritten image"}
+            </button>
+            <input
+              ref={scanInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                handleScanImage(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            {scanError && <p className="mt-1 text-xs text-red-700">{scanError}</p>}
+          </div>
         </div>
       )}
 
