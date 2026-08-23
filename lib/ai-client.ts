@@ -94,6 +94,10 @@ export const AI_REQUEST_MAX_ATTEMPTS = 3;
 
 const AI_RETRY_BASE_DELAY_MS = 400;
 
+function getReasoningEffort(model: string): "none" | "low" {
+  return model.trim().toLowerCase() === "gpt-5.6-luna" ? "none" : "low";
+}
+
 function wait(delayMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
@@ -133,7 +137,7 @@ async function callGemini(prompt: string, maxTokens: number): Promise<string> {
         model,
         messages: [{ role: "user", content: prompt }],
         max_tokens: maxTokens,
-        reasoning_effort: "low",
+        reasoning_effort: getReasoningEffort(model),
         service_tier: GEMINI_SERVICE_TIER,
       });
 
@@ -202,7 +206,7 @@ export async function getImageTranscription(
       },
     ],
     max_tokens: 2048,
-    reasoning_effort: "low",
+    reasoning_effort: getReasoningEffort(model),
     service_tier: GEMINI_SERVICE_TIER,
   });
 
