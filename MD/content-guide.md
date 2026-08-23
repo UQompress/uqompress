@@ -102,6 +102,12 @@ we will cover", history/background unless examinable.
 **Never paraphrase symbols.** Write `X → Y`, not "X determines Y". Write `¬∀x P(x)`, not "not for all
 x". If the source used notation, the card uses notation.
 
+**Notation is plain Unicode, never LaTeX.** This app has no math renderer — fragments display as
+plain text, so `\frac{a}{b}`, `$x^2$`, and similar LaTeX markup show up as literal broken text on
+the card. Write math with Unicode symbols and plain-text layout instead: `×`, `÷`, `±`, `≤`, `≥`,
+`√`, `π`, `→`, `∑`, `∫`, `∈`, exponents as `x^2` or `x²`, fractions as `a/b` or `(a)/(b)`, roots as
+`√(x)`. No `$...$`, no backslash commands, no markdown.
+
 **Cut every word that isn't load-bearing.** Target budgets:
 
 | Card type | Budget |
@@ -377,7 +383,7 @@ Run this on every card. Rewrite any that fails.
 8. Is the card over its word budget (§4)?
 9. Does the card make sense on its own, dragged away from its neighbours?
 10. Is every claim traceable to `source_ref`, or correctly tagged `"web"`?
-11. Any markdown, HTML, or colour values inside `label` / `body`? → strip
+11. Any markdown, HTML, LaTeX, or colour values inside `label` / `body`? → strip, use plain Unicode
 12. Any dividers emitted? → remove, dividers are student-added
 
 Then check the sheet as a whole:
