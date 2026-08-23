@@ -1416,3 +1416,4 @@ https://react.dev/link/hydration-mismatch
  POST /api/lookup-ecp 200 in 251ms (next.js: 6ms, application-code: 245ms)
  POST /api/extract-pdf 200 in 1265ms (next.js: 7ms, application-code: 1258ms)
  POST /api/analyse 200 in 62s (next.js: 8ms, application-code: 62s)
+ GET /editor 200 in 30ms (next.js: 6ms, application-code: 25ms)
