@@ -11,16 +11,43 @@ import {
 } from "@/lib/rich-text";
 import type { CanvasBlock, TextBlockKind } from "@/lib/types";
 
+function placeCaretAtPoint(el: HTMLElement, x: number, y: number) {
+  const selection = window.getSelection();
+  if (!selection) return;
+  const doc = document as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+  if (typeof doc.caretPositionFromPoint === "function") {
+    const pos = doc.caretPositionFromPoint(x, y);
+    if (!pos || !el.contains(pos.offsetNode)) return;
+    const range = document.createRange();
+    range.setStart(pos.offsetNode, pos.offset);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return;
+  }
+  const range = doc.caretRangeFromPoint?.(x, y);
+  if (!range || !el.contains(range.startContainer)) return;
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 export function TextBlockEditor({
   block,
+  isEditing,
   onChange,
 }: {
   block: CanvasBlock;
+  isEditing: boolean;
   onChange: (patch: Partial<CanvasBlock>, opts?: { coalesceKey?: string }) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const lastEmitted = useRef(block.content);
   const seeded = useRef(false);
+  const pendingCaret = useRef<{ x: number; y: number } | null>(null);
   const kind: TextBlockKind = block.textKind ?? "body";
   const defaults = TEXT_KIND_DEFAULTS[kind];
   const fontSize = block.fontSize ?? defaults.fontSize;
@@ -39,6 +66,19 @@ export function TextBlockEditor({
       lastEmitted.current = block.content;
     }
   }, [block.content]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!isEditing) {
+      if (document.activeElement === el) el.blur();
+      return;
+    }
+    el.focus();
+    const point = pendingCaret.current;
+    pendingCaret.current = null;
+    if (point) placeCaretAtPoint(el, point.x, point.y);
+  }, [isEditing]);
 
   function emit(html: string, extra?: Partial<CanvasBlock>) {
     lastEmitted.current = html;
@@ -98,13 +138,21 @@ export function TextBlockEditor({
       ref={ref}
       data-text-block-id={block.id}
       data-empty={isEmpty ? "true" : "false"}
-      contentEditable
+      contentEditable={isEditing}
       suppressContentEditableWarning
       spellCheck={false}
       onInput={handleInput}
       onPaste={handlePaste}
-      onPointerDown={(e) => e.stopPropagation()}
-      className="text-block-editor h-full w-full overflow-hidden whitespace-pre-wrap outline-none"
+      onPointerDown={(e) => {
+        if (isEditing) {
+          e.stopPropagation();
+          return;
+        }
+        pendingCaret.current = { x: e.clientX, y: e.clientY };
+      }}
+      className={`text-block-editor h-full w-full overflow-hidden whitespace-pre-wrap outline-none ${
+        isEditing ? "" : "select-none"
+      }`}
       style={{
         fontSize: `${fontSize}px`,
         lineHeight: TEXT_LINE_HEIGHT,

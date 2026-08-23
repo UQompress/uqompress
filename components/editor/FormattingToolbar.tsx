@@ -389,18 +389,11 @@ function ColorMenuButton({
         aria-expanded={open}
         aria-haspopup="true"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={(e) => {
-          const target = e.target as HTMLElement;
-          if (target.closest("[data-color-bar]")) {
-            onOpenChange(!open);
-            return;
-          }
-          onApply(color);
-        }}
+        onClick={() => onOpenChange(!open)}
         className="flex h-8 w-8 flex-col items-center justify-center gap-0.5 rounded-sm hover:bg-zinc-100"
       >
         {icon}
-        <span data-color-bar className="flex w-full items-center justify-center py-0.5">
+        <span className="flex w-full items-center justify-center py-0.5">
           <ColorBar color={color} />
         </span>
       </button>

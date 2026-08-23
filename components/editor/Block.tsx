@@ -262,7 +262,9 @@ export function Block({
 }) {
   const captureHistory = useStudioStore((s) => s.captureHistory);
   const [overlayRect, setOverlayRect] = useState<DOMRect | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const nodeRef = useRef<HTMLDivElement | null>(null);
+  const skipEditClickRef = useRef(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: block.id,
@@ -276,7 +278,18 @@ export function Block({
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const isText = block.type === "text";
-  const dragListeners = isText && isSelected ? {} : listeners;
+  if (!isSelected && isEditing) setIsEditing(false);
+  if (isDragging) skipEditClickRef.current = true;
+  const dragListeners =
+    isText && isEditing
+      ? {}
+      : {
+          ...listeners,
+          onPointerDown: (event: React.PointerEvent) => {
+            skipEditClickRef.current = false;
+            listeners?.onPointerDown?.(event);
+          },
+        };
 
   function combinedRef(node: HTMLDivElement | null) {
     setNodeRef(node);
@@ -491,12 +504,20 @@ export function Block({
       {...attributes}
       onClick={(e) => {
         e.stopPropagation();
+        const skipEdit = skipEditClickRef.current;
+        skipEditClickRef.current = false;
+        if (isText && isSelected && !isEditing && !skipEdit) {
+          setIsEditing(true);
+        }
         onSelect();
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
         if (block.type === "image") {
           imageInputRef.current?.click();
+        } else if (isText) {
+          setIsEditing(true);
+          onSelect();
         }
       }}
       style={{
@@ -511,10 +532,10 @@ export function Block({
         zIndex: isDragging || isSelected ? 10 : 1,
       }}
       className={`group border ${isBoxed && !isTopic ? "bg-white" : ""} ${
-        isText && isSelected ? "cursor-text" : "cursor-grab"
+        isText && isEditing ? "cursor-text" : "cursor-grab"
       }`}
     >
-      {isText && isSelected && (
+      {isText && isEditing && (
         <div
           {...listeners}
           title="Drag to move"
@@ -522,7 +543,7 @@ export function Block({
         />
       )}
       {block.type === "text" && (
-        <TextBlockEditor block={block} onChange={onChange} />
+        <TextBlockEditor block={block} isEditing={isEditing} onChange={onChange} />
       )}
       {block.type === "table" && (
         <TableContent
