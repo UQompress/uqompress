@@ -15,6 +15,7 @@ import {
   clamp,
   snap,
 } from "@/lib/editor-constants";
+import { parseInk } from "@/lib/ink";
 import { htmlToPlainText, applyLabelBeforeColon } from "@/lib/rich-text";
 import { TextBlockEditor } from "./TextBlockEditor";
 import { useStudioStore } from "@/lib/store";
@@ -37,16 +38,17 @@ const SHAPE_COLOR_OPTIONS = [
 const DEFAULT_BORDER_COLOR = "#e5e5e5";
 const SELECTED_BORDER_COLOR = "#51247A";
 
-const CONTENT_LESS_TYPES: BlockType[] = ["divider", "line", "arrow", "tick", "circle", "cross"];
-const STROKE_ADJUSTABLE_TYPES: BlockType[] = ["line", "arrow"];
+const CONTENT_LESS_TYPES: BlockType[] = ["divider", "line", "arrow", "tick", "circle", "cross", "ink"];
+const STROKE_ADJUSTABLE_TYPES: BlockType[] = ["line", "arrow", "ink"];
 const FONT_RESIZABLE_TYPES: BlockType[] = ["text"];
-const SHAPE_COLORABLE_TYPES: BlockType[] = ["line", "arrow", "tick", "circle", "cross"];
+const SHAPE_COLORABLE_TYPES: BlockType[] = ["line", "arrow", "tick", "circle", "cross", "ink"];
 const DEFAULT_SHAPE_COLOR: Record<string, string> = {
   line: "#171717",
   arrow: "#171717",
   tick: "#16a34a",
   circle: "#dc2626",
   cross: "#dc2626",
+  ink: "#171717",
 };
 
 function ShapeContent({ block }: { block: CanvasBlock }) {
@@ -91,6 +93,26 @@ function ShapeContent({ block }: { block: CanvasBlock }) {
           <X size={iconSize} strokeWidth={3} style={{ color }} />
         </div>
       );
+    case "ink": {
+      const ink = parseInk(block.content);
+      if (!ink) return null;
+      return (
+        <svg
+          viewBox={`0 0 ${ink.vw} ${ink.vh}`}
+          preserveAspectRatio="none"
+          className="h-full w-full overflow-visible"
+        >
+          <path
+            d={ink.d}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    }
     default:
       return null;
   }
@@ -506,7 +528,7 @@ export function Block({
         e.stopPropagation();
         const skipEdit = skipEditClickRef.current;
         skipEditClickRef.current = false;
-        if (isText && isSelected && !isEditing && !skipEdit) {
+        if (isText && !isEditing && !skipEdit && isSelected) {
           setIsEditing(true);
         }
         onSelect();
@@ -529,7 +551,7 @@ export function Block({
         transform: `${CSS.Translate.toString(transform) ?? ""} rotate(${rotation}deg)`,
         borderColor,
         background: isTopic ? TEXT_KIND_DEFAULTS.topic.background : undefined,
-        zIndex: isDragging || isSelected ? 10 : 1,
+        zIndex: isDragging || isSelected ? 10 : block.type === "ink" ? 3 : 1,
       }}
       className={`group border ${isBoxed && !isTopic ? "bg-white" : ""} ${
         isText && isEditing ? "cursor-text" : "cursor-grab"

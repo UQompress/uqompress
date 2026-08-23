@@ -59,7 +59,8 @@ export type BlockType =
   | "arrow"
   | "tick"
   | "circle"
-  | "cross";
+  | "cross"
+  | "ink";
 
 export type TextBlockKind = "topic" | "subtopic" | "body" | "subbody";
 
@@ -72,8 +73,9 @@ export type CanvasBlock = {
   width: number;
   height: number;
   rotation?: number;
-  // Text blocks store a sanitised HTML subset (b/i/u/span/br). Other types
-  // keep plain text (table rows, image data URLs, empty shapes).
+  // Text blocks store a sanitised HTML subset (b/i/u/span/br). Ink blocks
+  // store serialised path data. Other types keep plain text (table rows,
+  // image data URLs, empty shapes).
   content: string;
   fontSize?: number;
   textColor?: string;

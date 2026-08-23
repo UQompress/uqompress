@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ColorBar, ToolbarIcon } from "@/components/editor/ToolbarIcon";
-import { DEFAULT_FONT_SIZE, clampFontSize, stepFontSize } from "@/lib/editor-constants";
+import { DEFAULT_FONT_SIZE, clamp, clampFontSize, stepFontSize } from "@/lib/editor-constants";
 import { getSelectionFontSizesPx, wrapSelectionInSpan } from "@/lib/rich-text";
 import { useStudioStore } from "@/lib/store";
 import type { CanvasBlock } from "@/lib/types";
 
 const FONT_SWATCHES = ["#171717", "#51247A", "#dc2626", "#2563eb", "#16a34a", "#d97706", "#ffffff"];
 const HIGHLIGHT_SWATCHES = ["#FEF9C3", "#F3EAFB", "#FECACA", "#BBF7D0", "#BFDBFE", "#E5E5E5"];
+const INK_SWATCHES = ["#171717", "#51247A", "#dc2626", "#2563eb", "#16a34a", "#d97706"];
 
 function Divider() {
   return <div className="mx-1 h-6 w-px bg-grey-light" />;
@@ -64,12 +65,15 @@ function findEditingBlock(): HTMLElement | null {
 function syncEditingBlock(
   updateBlock: (id: string, patch: Partial<CanvasBlock>) => void,
   extra?: Partial<CanvasBlock>,
+  fromEl?: HTMLElement | null,
 ) {
-  const el = findEditingBlock();
-  if (!el) return;
-  const id = el.dataset.textBlockId;
+  const host =
+    fromEl?.closest("[data-text-block-id]") ??
+    findEditingBlock();
+  if (!(host instanceof HTMLElement)) return;
+  const id = host.dataset.textBlockId;
   if (!id) return;
-  updateBlock(id, { content: el.innerHTML, manualLabelFormat: true, ...extra });
+  updateBlock(id, { content: host.innerHTML, manualLabelFormat: true, ...extra });
 }
 
 export function FormattingToolbar({
@@ -93,6 +97,12 @@ export function FormattingToolbar({
   const [highlightColor, setHighlightColor] = useState("#FEF9C3");
   const [showFontPicker, setShowFontPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const annotationMode = useStudioStore((s) => s.annotationMode);
+  const setAnnotationMode = useStudioStore((s) => s.setAnnotationMode);
+  const annotationColor = useStudioStore((s) => s.annotationColor);
+  const setAnnotationColor = useStudioStore((s) => s.setAnnotationColor);
+  const annotationStrokeWidth = useStudioStore((s) => s.annotationStrokeWidth);
+  const setAnnotationStrokeWidth = useStudioStore((s) => s.setAnnotationStrokeWidth);
   const savedRangeRef = useRef<Range | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +134,10 @@ export function FormattingToolbar({
     document.addEventListener("selectionchange", handleSelectionChange);
     return () => document.removeEventListener("selectionchange", handleSelectionChange);
   }, [selectedBlock?.fontSize]);
+
+  useEffect(() => {
+    if (inactive && annotationMode) setAnnotationMode(false);
+  }, [inactive, annotationMode, setAnnotationMode]);
 
   const [trackedBlockId, setTrackedBlockId] = useState(selectedBlock?.id);
   if (selectedBlock?.id !== trackedBlockId) {
@@ -311,6 +325,73 @@ export function FormattingToolbar({
         }}
         onApply={applyHighlight}
       />
+
+      <div className="relative overflow-visible">
+        <ToolButton
+          label="Annotate"
+          pressed={annotationMode}
+          disabled={inactive}
+          onClick={() => {
+            const next = !annotationMode;
+            setAnnotationMode(next);
+            if (next) {
+              setShowFontPicker(false);
+              setShowHighlightPicker(false);
+            }
+          }}
+        >
+          <ToolbarIcon file="Pen.svg" alt="" className="h-4 w-4" />
+        </ToolButton>
+        {annotationMode && (
+          <div className="absolute top-9 left-0 z-50 flex items-center gap-1.5 border border-grey-light bg-white p-2 shadow-sm">
+            {INK_SWATCHES.map((swatch) => (
+              <button
+                key={swatch}
+                type="button"
+                title={swatch}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setAnnotationColor(swatch)}
+                style={{ backgroundColor: swatch }}
+                className={`h-5 w-5 border ${
+                  annotationColor.toLowerCase() === swatch.toLowerCase()
+                    ? "border-black"
+                    : "border-grey-light"
+                }`}
+              />
+            ))}
+            <input
+              type="color"
+              aria-label="Custom ink colour"
+              value={toHexColor(annotationColor)}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setAnnotationColor(e.target.value)}
+              className="h-5 w-6 cursor-pointer border-0 p-0"
+            />
+            <div className="ml-1 flex items-center gap-1 text-xs text-grey">
+              <button
+                type="button"
+                aria-label="Thinner stroke"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setAnnotationStrokeWidth(clamp(annotationStrokeWidth - 1, 1, 12))}
+                className="flex h-5 w-5 items-center justify-center border border-grey-light leading-none"
+              >
+                −
+              </button>
+              <span className="w-3 text-center text-foreground">{annotationStrokeWidth}</span>
+              <button
+                type="button"
+                aria-label="Thicker stroke"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setAnnotationStrokeWidth(clamp(annotationStrokeWidth + 1, 1, 12))}
+                className="flex h-5 w-5 items-center justify-center border border-grey-light leading-none"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

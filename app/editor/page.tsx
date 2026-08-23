@@ -58,6 +58,8 @@ export default function EditorPage() {
   const mergeAnalysisResult = useStudioStore((s) => s.mergeAnalysisResult);
   const undo = useStudioStore((s) => s.undo);
   const redo = useStudioStore((s) => s.redo);
+  const annotationMode = useStudioStore((s) => s.annotationMode);
+  const setAnnotationMode = useStudioStore((s) => s.setAnnotationMode);
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -92,8 +94,17 @@ export default function EditorPage() {
   }, [courseCode, router]);
 
   useEffect(() => {
+    if (sidebarMode === "compare" && annotationMode) setAnnotationMode(false);
+  }, [sidebarMode, annotationMode, setAnnotationMode]);
+
+  useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const isMeta = e.metaKey || e.ctrlKey;
+      if (e.key === "Escape" && annotationMode) {
+        e.preventDefault();
+        setAnnotationMode(false);
+        return;
+      }
       if (isMeta && e.key.toLowerCase() === "z") {
         const target = e.target as HTMLElement | null;
         if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
@@ -115,7 +126,7 @@ export default function EditorPage() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedBlockId, removeBlock, undo, redo]);
+  }, [selectedBlockId, removeBlock, undo, redo, annotationMode, setAnnotationMode]);
 
   useEffect(() => {
     const viewport = sheetViewportRef.current;
